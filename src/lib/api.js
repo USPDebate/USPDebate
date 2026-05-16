@@ -20,6 +20,9 @@ export function callAPI(action, payload) {
       else reject(new Error((resp && resp.erro) || 'Erro na API'));
     };
     script.onerror = () => { if (!done) { cleanup(); reject(new Error('Erro de conexão')); } };
+    // anônimo: não envia cookies do Google → evita o erro de roteamento
+    // entre múltiplas contas (Apps Script "Qualquer pessoa").
+    script.crossOrigin = 'anonymous';
     script.src = API_URL
       + '?action=' + encodeURIComponent(action)
       + '&callback=' + cb
