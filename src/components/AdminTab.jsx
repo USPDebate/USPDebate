@@ -167,7 +167,11 @@ export default function AdminTab() {
     if (!window.confirm(`Remover presença de ${nome}?`)) return;
     callAPI('apagarPresenca', { nome })
       .then((res) => {
-        if (res.ok) { invalidate('getPresentesHoje'); carregarPresentes(); }
+        if (res.ok) {
+          // Atualização otimista: remove da lista sem nova chamada.
+          setPresentes((prev) => (prev || []).filter((p) => p.nome !== nome));
+          invalidate('getPresentesHoje');
+        }
         setAlertaAcao(res.ok ? { tipo: 'success', msg: res.mensagem } : { tipo: 'error', msg: res.erro });
       })
       .catch(() => setAlertaAcao({ tipo: 'error', msg: 'Erro de conexão.' }));

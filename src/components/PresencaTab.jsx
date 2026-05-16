@@ -61,9 +61,18 @@ export default function PresencaTab() {
         setRegistrando(false);
         if (res.ok) {
           setAlerta({ tipo: 'success', msg: res.mensagem });
+          // Atualização otimista: já mostra na lista, sem esperar nova chamada.
+          const entrada = {
+            nome: nome.trim(),
+            dupla: tipo === 'observador' ? '' : dupla.trim(),
+            tipo,
+            naoDebate: tipo === 'observador',
+            hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          };
+          setPresentes((prev) =>
+            [...(prev || []), entrada].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')));
           setNome(''); setDupla(''); setDuplaOk(false); setDuplaInvalida(false);
           invalidate('getPresentesHoje');
-          setTimeout(carregar, 1000);
         } else {
           setAlerta({ tipo: res.erro.includes('já registrou') ? 'info' : 'error', msg: res.erro });
         }
@@ -78,9 +87,12 @@ export default function PresencaTab() {
     callAPI('atualizarDupla', { nome: editando.nome, dupla: novaDupla })
       .then((res) => {
         if (res.ok) {
+          // Atualização otimista da dupla na lista local.
+          setPresentes((prev) => (prev || []).map((p) =>
+            p.nome === editando.nome ? { ...p, dupla: novaDupla } : p));
           invalidate('getPresentesHoje');
           setEditAlerta({ tipo: 'success', msg: res.mensagem });
-          setTimeout(() => { setEditando(null); carregar(); }, 1200);
+          setTimeout(() => setEditando(null), 700);
         } else setEditAlerta({ tipo: 'error', msg: res.erro });
       })
       .catch(() => setEditAlerta({ tipo: 'error', msg: 'Erro de conexão.' }));
