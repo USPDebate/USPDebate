@@ -1,0 +1,565 @@
+// ============================================================
+// USP DEBATE - Script de Draw BP para Treinos
+// ============================================================
+// INSTRUÇÕES:
+// 1. Abra a planilha de Treinos
+// 2. Extensões > Apps Script
+// 3. Cole este script e salve (Ctrl+S)
+// 4. Para criar um menu na planilha:
+//    - Acionadores (⏰) > Adicionar acionador
+//    - Função: onOpen | Ao abrir
+// 5. Para rodar o draw: use o menu "🎯 USP Debate" > "Gerar Draw de Hoje"
+// ============================================================
+
+// Configurações da planilha de treinos
+const SHEET_ID_TREINOS   = "1xCtnVEoFWHb7d5Gwyh3YMC7SEJvgrLs7JhlnYeUNJDA";
+const NOME_ABA_TREINOS   = "Respostas";
+
+// Colunas do Forms de Treinos (1-based)
+// A(1): Timestamp | B(2): Email | C(3): Nome (lista) | D(4): Nome (texto livre)
+// E(5): Dupla (lista) | F(6): Dupla (texto livre)
+const COL_TREINO_TIMESTAMP = 1;
+const COL_TREINO_NOME_LISTA = 3;
+const COL_TREINO_NOME_TEXTO = 4;
+const COL_TREINO_DUPLA_LISTA = 5;
+const COL_TREINO_DUPLA_TEXTO = 6;
+
+// Posições BP
+const POSICOES_BP = ["OG", "OO", "CG", "CO"];
+
+// Cores do tema
+const COR_HEADER    = "#1a1a2e";
+const COR_OG        = "#d4edda";
+const COR_OO        = "#d1ecf1";
+const COR_CG        = "#fff3cd";
+const COR_CO        = "#f8d7da";
+const COR_JUIZ      = "#e2d9f3";
+const COR_SALA_PAR  = "#f0f4ff";
+const COR_SALA_IMPAR = "#ffffff";
+
+// ============================================================
+// Cria menu ao abrir a planilha
+// ============================================================
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu("🎯 USP Debate")
+    .addItem("Gerar Draw de Hoje", "gerarDraw")
+    .addItem("Limpar Draw de Hoje", "limparDrawHoje")
+    .addToUi();
+}
+
+// ============================================================
+// Função principal: gera o draw do dia
+// ============================================================
+function gerarDraw() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.openById(SHEET_ID_TREINOS);
+  const aba = ss.getSheetByName(NOME_ABA_TREINOS);
+
+  if (!aba) {
+    ui.alert("❌ Aba '" + NOME_ABA_TREINOS + "' não encontrada!");
+    return;
+  }
+
+  // ── 1. Pega respostas de hoje ─────────────────────────────
+  const hoje = new Date();
+  const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  const fimDia    = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59);
+
+  const totalLinhas = aba.getLastRow();
+  if (totalLinhas < 2) {
+    ui.alert("❌ Nenhuma resposta encontrada na aba '" + NOME_ABA_TREINOS + "'.");
+    return;
+  }
+
+  const dados = aba.getRange(2, 1, totalLinhas - 1, 6).getValues();
+
+  // Filtra respostas de hoje
+  const respostasHoje = dados.filter(row => {
+    const ts = new Date(row[COL_TREINO_TIMESTAMP - 1]);
+    return ts >= inicioDia && ts <= fimDia;
+  });
+
+  if (respostasHoje.length === 0) {
+    ui.alert("❌ Nenhuma resposta encontrada para hoje (" + formatarData(hoje) + ").");
+    return;
+  }
+
+  // ── 2. Resolve nomes e duplas (última instância por pessoa) ──
+  const pessoasMap = new Map(); // nome_normalizado -> { nome, dupla }
+
+  respostasHoje.forEach(row => {
+    const nomeLista = String(row[COL_TREINO_NOME_LISTA - 1]).trim();
+    const nomeTexto = String(row[COL_TREINO_NOME_TEXTO - 1]).trim();
+    const dupLista  = String(row[COL_TREINO_DUPLA_LISTA - 1]).trim();
+    const dupTexto  = String(row[COL_TREINO_DUPLA_TEXTO - 1]).trim();
+
+    // Nome final: lista suspensa tem prioridade, senão texto livre
+    const nome = (nomeLista && nomeLista !== "" && nomeLista.toLowerCase() !== "escolher")
+      ? nomeLista : nomeTexto;
+    if (!nome || nome.length < 2) return;
+
+    // Dupla final: lista suspensa tem prioridade, senão texto livre
+    const dupla = (dupLista && dupLista !== "" && dupLista.toLowerCase() !== "escolher")
+      ? dupLista : dupTexto;
+
+    // Última instância sobrescreve (Map mantém a última)
+    pessoasMap.set(normalizarNome(nome), { nome: nome, dupla: dupla || "" });
+  });
+
+  if (pessoasMap.size === 0) {
+    ui.alert("❌ Nenhum participante válido encontrado para hoje.");
+    return;
+  }
+
+  // ── 3. Resolve duplas com regra de última instância ──────
+  // Regra: se A diz dupla=B e B diz dupla=C, vale última instância de cada
+  // O par válido é: A→B e B→A (confirmação mútua tem prioridade)
+  // Se conflito, vale o preenchimento mais recente
+
+  const pessoas = Array.from(pessoasMap.values());
+  const pares = resolverDuplas(pessoas);
+
+  // ── 4. Verifica múltiplo de 8 e pergunta sobre juízes ────
+  const totalPessoas = pessoas.length;
+  const resultado = verificarEAjustarParaMultiplo8(totalPessoas, pares, pessoas, ui);
+  if (!resultado) return; // usuário cancelou
+
+  const { paresFinais, juizes, numSalas } = resultado;
+
+  // ── 5. Gera o draw ────────────────────────────────────────
+  const draw = montarDraw(paresFinais, numSalas);
+
+  // ── 6. Cria aba do draw ───────────────────────────────────
+  const nomeAba = "Draw " + formatarData(hoje);
+  let abaDraw = ss.getSheetByName(nomeAba);
+  if (abaDraw) {
+    const confirmar = ui.alert(
+      "⚠️ Já existe um draw para hoje!",
+      "Deseja substituir o draw existente?",
+      ui.ButtonSet.YES_NO
+    );
+    if (confirmar !== ui.Button.YES) return;
+    ss.deleteSheet(abaDraw);
+  }
+
+  abaDraw = ss.insertSheet(nomeAba);
+  escreverDraw(abaDraw, draw, juizes, hoje);
+
+  ui.alert("✅ Draw gerado com sucesso!\n\n" +
+    "📋 " + numSalas + " sala(s) | " +
+    "👥 " + (totalPessoas - juizes.length) + " debatedores | " +
+    "⚖️ " + juizes.length + " juiz(es)\n\n" +
+    "Veja a aba '" + nomeAba + "'!");
+}
+
+// ============================================================
+// Resolve duplas com lógica de última instância
+// Regras:
+// - A→B e B→A = mútua (✅)
+// - A→B mas B não preencheu = unilateral (✅ também)
+// - A→B mas B→Z = última iteração vence (Z e B ficam juntos, A fica livre)
+// ============================================================
+function resolverDuplas(pessoas) {
+  // Mapa nome_normalizado -> nome real
+  const nomeMap = new Map();
+  pessoas.forEach(p => nomeMap.set(normalizarNome(p.nome), p.nome));
+
+  // Mapa de quem quer ser dupla de quem (última instância já resolvida pelo Map anterior)
+  // A ordem em pessoas já reflete a última resposta de cada um
+  const querDupla = new Map(); // norm(A) -> norm(B)
+  pessoas.forEach(p => {
+    if (p.dupla && p.dupla.length >= 2) {
+      const normDupla = normalizarNome(p.dupla);
+      // Só registra se a dupla está na lista de participantes de hoje
+      if (nomeMap.has(normDupla)) {
+        querDupla.set(normalizarNome(p.nome), normDupla);
+      }
+    }
+  });
+
+  const pareados = new Set();
+  const pares = [];
+
+  // Prioridade 1: duplas mútuas (A→B e B→A) — ambos confirmam
+  querDupla.forEach((dupNorm, pesNorm) => {
+    if (pareados.has(pesNorm) || pareados.has(dupNorm)) return;
+    if (querDupla.get(dupNorm) === pesNorm) {
+      pares.push({
+        p1: nomeMap.get(pesNorm),
+        p2: nomeMap.get(dupNorm),
+        confirmado: true
+      });
+      pareados.add(pesNorm);
+      pareados.add(dupNorm);
+    }
+  });
+
+  // Prioridade 2: última instância — A→B mas B→Z
+  // B e Z ficam juntos (última declaração de B), A fica livre
+  // Já resolvido implicitamente: se B→Z e Z→B (ou Z não preencheu), cai no próximo loop
+  // Aqui só processamos quem ainda não foi pareado
+  querDupla.forEach((dupNorm, pesNorm) => {
+    if (pareados.has(pesNorm) || pareados.has(dupNorm)) return;
+    // A→B: B está disponível (não pareado ainda)
+    // Não importa se B→outroAlguém que já foi pareado: A e B ficam juntos
+    pares.push({
+      p1: nomeMap.get(pesNorm),
+      p2: nomeMap.get(dupNorm),
+      confirmado: true  // unilateral também mostra ✅
+    });
+    pareados.add(pesNorm);
+    pareados.add(dupNorm);
+  });
+
+  // Restantes: sem dupla ou dupla não participou hoje
+  pessoas.forEach(p => {
+    const norm = normalizarNome(p.nome);
+    if (!pareados.has(norm)) {
+      pares.push({ p1: p.nome, p2: null, confirmado: false });
+      pareados.add(norm);
+    }
+  });
+
+  return pares;
+}
+
+// ============================================================
+// Verifica múltiplo de 8 e resolve com o usuário
+// ============================================================
+function verificarEAjustarParaMultiplo8(total, pares, pessoas, ui) {
+  const resto = total % 8;
+  if (resto === 0) {
+    return { paresFinais: pares, juizes: [], numSalas: total / 8 };
+  }
+
+  const numSalas = Math.floor(total / 8);
+
+  // Monta as opções dinamicamente
+  const opcoes = [];
+  const linhasOpcao = [];
+
+  // Opção A: tirar pessoas para fechar salas de 8 (só se tiver pelo menos 1 sala de 8)
+  if (numSalas > 0) {
+    opcoes.push({ letra: "A", tipo: "juizes", numJuizes: resto, numSalas: numSalas, salaDe4: false });
+    linhasOpcao.push("Opção A: Tirar " + resto + " pessoa(s) para julgar → " + numSalas + " sala(s) de 8.");
+  }
+
+  // Opção B: sala de 8 + sala de 4 (só se resto for exatamente 4)
+  if (resto === 4) {
+    opcoes.push({ letra: "B", tipo: "salaDe4", numJuizes: 0, numSalas: numSalas, salaDe4: true });
+    linhasOpcao.push("Opção B: Fazer " + numSalas + " sala(s) de 8 + 1 sala de 4.");
+  }
+
+  // Opção sempre disponível: rodar assim mesmo
+  const letraRodar = opcoes.length === 0 ? "A" : (opcoes.length === 1 ? "B" : "C");
+  const descRodar = numSalas > 0
+    ? "Rodar com " + numSalas + " sala(s) de 8 + 1 sala incompleta de " + resto + "."
+    : "Rodar 1 sala incompleta com " + total + " pessoas.";
+  opcoes.push({ letra: letraRodar, tipo: "rodar", numJuizes: 0, numSalas: Math.max(numSalas, 1), salaDe4: resto >= 4 });
+  linhasOpcao.push("Opção " + letraRodar + ": " + descRodar);
+
+  const mensagem = "👥 Hoje temos " + total + " participantes.\n\n" +
+    linhasOpcao.join("\n") + "\n\nDigite " + opcoes.map(o => o.letra).join(" ou ") + ":";
+
+  const respostaOpcao = ui.prompt("⚖️ Ajuste de Salas", mensagem, ui.ButtonSet.OK_CANCEL);
+  if (respostaOpcao.getSelectedButton() !== ui.Button.OK) return null;
+
+  const escolha = respostaOpcao.getResponseText().trim().toUpperCase();
+  const opcaoEscolhida = opcoes.find(o => o.letra === escolha);
+
+  if (!opcaoEscolhida) {
+    ui.alert("❌ Opção inválida. Execute novamente e escolha entre: " + opcoes.map(o => o.letra).join(", "));
+    return null;
+  }
+
+  if (opcaoEscolhida.tipo === "rodar") {
+    return { paresFinais: pares, juizes: [], numSalas: opcaoEscolhida.numSalas, temSalaDe4: opcaoEscolhida.salaDe4 };
+  }
+
+  if (opcaoEscolhida.numJuizes === 0) {
+    return { paresFinais: pares, juizes: [], numSalas: opcaoEscolhida.numSalas, temSalaDe4: opcaoEscolhida.salaDe4 };
+  }
+
+  return pedirJuizes(pares, pessoas, opcaoEscolhida.numJuizes, opcaoEscolhida.numSalas, ui, opcaoEscolhida.salaDe4);
+}
+
+// ============================================================
+// Pede ao usuário para escolher os juízes
+// ============================================================
+function pedirJuizes(pares, pessoas, numJuizes, numSalas, ui, salaDe4 = false) {
+  const listaNomes = pessoas.map((p, i) => (i + 1) + ". " + p.nome).join("\n");
+
+  const resposta = ui.prompt(
+    "⚖️ Escolha " + numJuizes + " juiz(es)",
+    "Digite os nomes separados por vírgula:\n\n" + listaNomes,
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (resposta.getSelectedButton() !== ui.Button.OK) return null;
+
+  const nomesJuizes = resposta.getResponseText().split(",").map(n => n.trim()).filter(n => n.length > 0);
+
+  if (nomesJuizes.length !== numJuizes) {
+    ui.alert("❌ Você precisava escolher exatamente " + numJuizes + " juiz(es). Tente novamente.");
+    return null;
+  }
+
+  // Remove juízes dos pares
+  const normsJuizes = nomesJuizes.map(n => normalizarNome(n));
+  const paresFinais = [];
+
+  pares.forEach(par => {
+    const norm1 = normalizarNome(par.p1);
+    const norm2 = par.p2 ? normalizarNome(par.p2) : null;
+
+    const p1Juiz = normsJuizes.some(j => norm1.includes(j) || j.includes(norm1));
+    const p2Juiz = norm2 ? normsJuizes.some(j => norm2.includes(j) || j.includes(norm2)) : false;
+
+    if (p1Juiz && p2Juiz) return; // dupla inteira vira juiz
+    if (p1Juiz) {
+      if (par.p2) paresFinais.push({ p1: par.p2, p2: null, confirmado: false });
+      return;
+    }
+    if (p2Juiz) {
+      paresFinais.push({ p1: par.p1, p2: null, confirmado: false });
+      return;
+    }
+    paresFinais.push(par);
+  });
+
+  return { paresFinais, juizes: nomesJuizes, numSalas, temSalaDe4: salaDe4 };
+}
+
+// ============================================================
+// Monta o draw embaralhando pares nas salas e posições
+// ============================================================
+function montarDraw(pares, numSalas) {
+  // Completa pares incompletos (o ímpar vai separado para a sala incompleta)
+  const { paresCompletos, impar } = completarPares(embaralhar([...pares]));
+
+  const salas = [];
+  let idx = 0;
+
+  // Salas completas de 8 (4 pares cada)
+  for (let s = 0; s < numSalas; s++) {
+    const sala = { numero: s + 1, posicoes: [] };
+    const posicoesEmbaralhadas = embaralhar([...POSICOES_BP]);
+
+    for (let p = 0; p < 4; p++) {
+      if (idx < paresCompletos.length) {
+        sala.posicoes.push({
+          posicao: posicoesEmbaralhadas[p],
+          p1: paresCompletos[idx].p1,
+          p2: paresCompletos[idx].p2 || "—",
+          confirmado: paresCompletos[idx].confirmado
+        });
+        idx++;
+      }
+    }
+    salas.push(sala);
+  }
+
+  // Sala incompleta: pares restantes + ímpar no final
+  if (idx < paresCompletos.length || impar) {
+    const sala = { numero: numSalas + 1, posicoes: [], meia: true };
+    const todasPosicoes = ["OG", "OO", "CG", "CO"];
+    let p = 0;
+
+    while (idx < paresCompletos.length) {
+      sala.posicoes.push({
+        posicao: p < todasPosicoes.length ? todasPosicoes[p] : "Pos " + (p + 1),
+        p1: paresCompletos[idx].p1,
+        p2: paresCompletos[idx].p2 || "—",
+        confirmado: paresCompletos[idx].confirmado
+      });
+      idx++;
+      p++;
+    }
+
+    // Adiciona o ímpar sozinho no final da sala incompleta
+    if (impar) {
+      sala.posicoes.push({
+        posicao: p < todasPosicoes.length ? todasPosicoes[p] : "Pos " + (p + 1),
+        p1: impar,
+        p2: "— (sem par)",
+        confirmado: false
+      });
+    }
+
+    salas.push(sala);
+  }
+
+  return salas;
+}
+
+// ============================================================
+// Completa pares incompletos pareando entre si
+// Retorna { paresCompletos, impar } onde impar é a pessoa
+// que sobrou (se total de sozinhos for ímpar)
+// ============================================================
+function completarPares(pares) {
+  const sozinhos = pares.filter(p => !p.p2);
+  const comDupla = pares.filter(p => p.p2);
+
+  const sozEmbaralh = embaralhar(sozinhos);
+  const novos = [];
+  let impar = null;
+
+  for (let i = 0; i < sozEmbaralh.length; i += 2) {
+    if (i + 1 < sozEmbaralh.length) {
+      novos.push({ p1: sozEmbaralh[i].p1, p2: sozEmbaralh[i+1].p1, confirmado: false });
+    } else {
+      // Guarda o ímpar separado — vai para a sala incompleta no final
+      impar = sozEmbaralh[i].p1;
+    }
+  }
+
+  return { paresCompletos: embaralhar([...comDupla, ...novos]), impar };
+}
+
+// ============================================================
+// Escreve o draw na aba
+// ============================================================
+function escreverDraw(aba, salas, juizes, hoje) {
+  const dados = [];
+  const posLinhas = []; // { linha (1-based), cor }
+  const linhasJuizes = [];
+  const bordas = [];
+
+  dados.push(["🎯 DRAW USP DEBATE — " + formatarData(hoje).toUpperCase(), "", "", "", ""]);
+  dados.push(["Sala", "Posição", "Debatedor 1", "Debatedor 2", "Dupla confirmada?"]);
+
+  let cur = 3;
+  salas.forEach(sala => {
+    const inicio = cur;
+    sala.posicoes.forEach(pos => {
+      dados.push([
+        "Sala " + sala.numero + (sala.meia ? " (4)" : ""),
+        pos.posicao, pos.p1, pos.p2,
+        pos.confirmado ? "✅ Sim" : "—"
+      ]);
+      posLinhas.push({ linha: cur, cor: corDaPosicao(pos.posicao) });
+      cur++;
+    });
+    bordas.push({ inicio, fim: cur - 1 });
+    dados.push(["", "", "", "", ""]); // espaço entre salas
+    cur++;
+  });
+
+  let hdrJuiz = -1;
+  if (juizes.length > 0) {
+    hdrJuiz = cur;
+    dados.push(["⚖️ JUÍZES", "", "", "", ""]);
+    cur++;
+    juizes.forEach(j => {
+      dados.push([j, "", "", "", ""]);
+      linhasJuizes.push(cur);
+      cur++;
+    });
+  }
+
+  // ── Um único setValues para todos os dados ──
+  aba.getRange(1, 1, dados.length, 5).setValues(dados);
+
+  // ── Título ──
+  aba.getRange(1, 1, 1, 5).merge()
+    .setBackground(COR_HEADER).setFontColor("#ffffff")
+    .setFontWeight("bold").setFontSize(14).setHorizontalAlignment("center");
+  aba.setRowHeight(1, 40);
+
+  // ── Cabeçalho ──
+  aba.getRange(2, 1, 1, 5)
+    .setBackground(COR_HEADER).setFontColor("#ffffff")
+    .setFontWeight("bold").setHorizontalAlignment("center").setFontSize(11);
+  aba.setRowHeight(2, 30);
+
+  // ── Formatação de posições agrupada por cor (menos chamadas API) ──
+  const porCor = {};
+  posLinhas.forEach(({ linha, cor }) => {
+    (porCor[cor] = porCor[cor] || []).push(linha);
+  });
+  Object.entries(porCor).forEach(([cor, linhas]) => {
+    aba.getRangeList(linhas.map(l => `A${l}:E${l}`)).setBackground(cor).setHorizontalAlignment("center");
+    aba.getRangeList(linhas.map(l => `C${l}:D${l}`)).setHorizontalAlignment("left");
+    linhas.forEach(l => aba.setRowHeight(l, 28));
+  });
+
+  // ── Bordas e espaços entre salas ──
+  bordas.forEach(b => {
+    aba.getRange(b.inicio, 1, b.fim - b.inicio + 1, 5)
+      .setBorder(true, true, true, true, false, false, "#cccccc", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+    aba.setRowHeight(b.fim + 1, 10);
+  });
+
+  // ── Juízes ──
+  if (hdrJuiz > 0) {
+    aba.getRange(hdrJuiz, 1, 1, 5).merge()
+      .setBackground(COR_JUIZ).setFontWeight("bold")
+      .setHorizontalAlignment("center").setFontSize(12);
+    aba.setRowHeight(hdrJuiz, 32);
+    linhasJuizes.forEach(l => {
+      aba.getRange(l, 1, 1, 5).merge()
+        .setBackground(COR_JUIZ).setHorizontalAlignment("center");
+      aba.setRowHeight(l, 26);
+    });
+  }
+
+  aba.setColumnWidth(1, 100);
+  aba.setColumnWidth(2, 80);
+  aba.setColumnWidth(3, 220);
+  aba.setColumnWidth(4, 220);
+  aba.setColumnWidth(5, 130);
+  aba.setFrozenRows(2);
+}
+
+// ============================================================
+// Limpa o draw de hoje
+// ============================================================
+function limparDrawHoje() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.openById(SHEET_ID_TREINOS);
+  const nomeAba = "Draw " + formatarData(new Date());
+  const aba = ss.getSheetByName(nomeAba);
+
+  if (!aba) {
+    ui.alert("Nenhum draw encontrado para hoje.");
+    return;
+  }
+
+  const confirmar = ui.alert("⚠️ Apagar draw de hoje?", "Tem certeza?", ui.ButtonSet.YES_NO);
+  if (confirmar === ui.Button.YES) {
+    ss.deleteSheet(aba);
+    ui.alert("✅ Draw apagado.");
+  }
+}
+
+// ============================================================
+// Helpers
+// ============================================================
+function normalizarNome(nome) {
+  return String(nome).trim().toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function embaralhar(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function formatarData(data) {
+  return Utilities.formatDate(data, Session.getScriptTimeZone(), "dd/MM/yyyy");
+}
+
+function corDaPosicao(pos) {
+  switch(pos) {
+    case "OG": return COR_OG;
+    case "OO": return COR_OO;
+    case "CG": return COR_CG;
+    case "CO": return COR_CO;
+    default:   return "#ffffff";
+  }
+}

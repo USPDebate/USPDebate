@@ -1,0 +1,532 @@
+// ============================================================
+// USP DEBATE - API v4 (somente JSON — front-end é estático)
+// ============================================================
+// Implantar como App da Web:
+//   Executar como: Eu
+//   Quem pode acessar: Qualquer pessoa
+// Use a URL /exec no index.html (constante API_URL).
+// SENHA: Projeto ⚙️ > Propriedades do script > SENHA_ADMIN
+// ============================================================
+
+const NOMES_PS = [
+  "Alanna Carriço Vilela","Álvaro Ribeiro Furtado","Ana Lara Rodrigues","Ana Luiza",
+  "Annelyce maryanne de jesus","Aretha","Augusto Silva de Queiroz",
+  "Beatriz Abrahão","Beatriz Custódio",
+  "Caio Krüger Monteiro","Caio Massi de Souza","Carlos Eduardo Dutra Bodart",
+  "Carolina Sacchetto da Silva","Cinthia Borelli",
+  "Daniel Loureiro Rodrigues","Darlei Pamplona",
+  "Eduardo Kohlsdorf","Enzo Augusto Federle Gemelli",
+  "Felipe Barreto Távora","Felipe Gabriel Courel Souza",
+  "Gabriel Grazia de Azambuja Villanova","Gabriel kenzo kobayashi",
+  "Gabriela Espinhara Siqueira","Gabriela Risso Fernandes","Gabriela Saito Pereira",
+  "Giuseppe Argenta Zaneti","Guilherme Mecenas Duarte","Gustavo Pettirossi",
+  "Heitor Carlos Soares","Heloísa Viana Fonsêca","Henry Gabriel Lima da Silva",
+  "Isabela Rebello Presgrave","Izabela de Caria Bertanha",
+  "Jean Lima Neres","Jeissymirian Saraiva Barreto",
+  "João Marcelo Silva Gomes","João Paulo Felipe Gonçalves",
+  "João Pedro Rufino Sandamil","João Pedro Silveira Ferreira",
+  "Julia Mendes Cosme","Julia Oliveira Rezende Coêlho","Julia Rangel Rosa Nasser",
+  "Kaique Antunes","Kaique Lima Santos","Kleber Alves Henriques dos Santos",
+  "Leonardo Carneiro Burlacchini de Carvalho","Lívia Dantas do Nascimento",
+  "Lucas De Oliveira De Almeida",
+  "Manuela Maria Martins Adriano","Manuela Reis Garin",
+  "Manuella Félix Teodoro Magalhães e Souza","Marcela Fusco Pina",
+  "Maria Eduarda Trimont Galhardo","Maria Vitória Rocha Veloso",
+  "Maryane Feitoza","Mateus Torres Nery Figueiredo","Matheus Martins Trandafilov",
+  "Max Vaz de Sousa Leite",
+  "Nicolas Fagundes Justi Muniz","Nícolas Marques Preto",
+  "Pedro Antônio Almeida e Nogueira","Pedro da Costa Silva",
+  "Pedro dos Santos Pereira","Pedro Henrique G. Candido",
+  "Rafael Noia Meira do Nascimento","Saulo Domingos Lima","Sofia Mendes Nery Costa",
+  "Thiago Fernando Martins Gomes","Tomas Wolffenbüttel",
+  "Victor Souza Santos","Wesley Santos","Yasmim Nobre de Oliveira"
+].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+
+// ============================================================
+// ROTEADOR DA API
+// ============================================================
+// Tudo passa por POST com Content-Type text/plain → sem preflight CORS.
+// Corpo: { action: "nomeDaAcao", payload: {...} }
+// Resposta: { sucesso: true, data: ... } | { sucesso:false, erro:"..." }
+
+const API_HANDLERS = {
+  getNomesCadastrados:   ()  => getNomesCadastrados(),
+  getNomesPresentesHoje: ()  => getNomesPresentesHoje(),
+  getPresentesHoje:      ()  => getPresentesHoje(),
+  registrarPresenca:     (p) => registrarPresenca(p),
+  atualizarDupla:        (p) => atualizarDupla(p),
+  apagarPresenca:        (p) => apagarPresenca(p.nome),
+  verificarSenha:        (p) => verificarSenha(p.senha),
+  gerarDrawWeb:          (p) => gerarDrawWeb(p.juizes, p.duplasAdmin),
+  publicarDraw:          ()  => publicarDraw(),
+  salvarDrawEditado:     (p) => salvarDrawEditado(p.salas, p.juizesPorSala, p.juizes),
+  salvarJuizesPorSala:   (p) => salvarJuizesPorSala(p.juizesPorSala),
+  getDrawHoje:           ()  => getDrawHoje(),
+  getDrawHojePublico:    ()  => getDrawHojePublico(),
+  getDrawsAnteriores:    ()  => getDrawsAnteriores(),
+  getDrawData:           (p) => getDrawData(p.nomeAba)
+};
+
+function doPost(e) {
+  try {
+    const body = JSON.parse((e && e.postData && e.postData.contents) || "{}");
+    const fn = API_HANDLERS[body.action];
+    if (!fn) return _json({ sucesso:false, erro:"Ação desconhecida: " + body.action });
+    return _json({ sucesso:true, data: fn(body.payload || {}) });
+  } catch (err) {
+    return _json({ sucesso:false, erro:String(err && err.message || err) });
+  }
+}
+
+function doGet(e) {
+  const p = (e && e.parameter) || {};
+  // Health-check quando não há ação
+  if (!p.action) {
+    return _saida({ sucesso:true, data:{ servico:"USP Debate API", versao:"v4" } }, p.callback);
+  }
+  let resultado;
+  try {
+    const fn = API_HANDLERS[p.action];
+    if (!fn) {
+      resultado = { sucesso:false, erro:"Ação desconhecida: " + p.action };
+    } else {
+      const payload = p.p ? JSON.parse(p.p) : {};
+      resultado = { sucesso:true, data: fn(payload) };
+    }
+  } catch (err) {
+    resultado = { sucesso:false, erro:String(err && err.message || err) };
+  }
+  return _saida(resultado, p.callback);
+}
+
+// Resposta: JSONP (se houver ?callback=) ou JSON puro.
+function _saida(obj, callback) {
+  const json = JSON.stringify(obj);
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + json + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(json)
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function _json(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ============================================================
+// CACHE / NOMES
+// ============================================================
+function getNomesCadastrados() {
+  return NOMES_PS;
+}
+
+function invalidarCachePresentes() {
+  CacheService.getScriptCache().remove("presentes_hoje");
+}
+
+// ============================================================
+// PRESENÇA
+// ============================================================
+function registrarPresenca(dados) {
+  try {
+    const ss  = SpreadsheetApp.openById(SHEET_ID_TREINOS);
+    const aba = ss.getSheetByName(NOME_ABA_TREINOS);
+    if (!aba) return { ok:false, erro:"Aba de respostas não encontrada." };
+    const nome      = String(dados.nome||"").trim();
+    const dupla     = String(dados.dupla||"").trim();
+    const tipo      = String(dados.tipo||"ps");       // "ps" | "visitante" | "observador"
+    if (nome.length < 2) return { ok:false, erro:"Nome inválido." };
+    const hoje      = new Date();
+    const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const totalLinhas = aba.getLastRow();
+    if (totalLinhas >= 2) {
+      const respostas = aba.getRange(2,1,totalLinhas-1,7).getValues();
+      const jaRegistrou = respostas.some(row => {
+        const ts      = new Date(row[0]);
+        const nomeRow = String(row[COL_TREINO_NOME_LISTA-1]||row[COL_TREINO_NOME_TEXTO-1]).trim();
+        return ts >= inicioDia && normalizarNome(nomeRow) === normalizarNome(nome);
+      });
+      if (jaRegistrou) return { ok:false, erro:"Você já registrou presença hoje! ✅" };
+    }
+    aba.appendRow([new Date(),"",nome,"",dupla,"",tipo]);
+    invalidarCachePresentes();
+    return { ok:true, mensagem:"Presença registrada com sucesso! 🎉" };
+  } catch(e) { return { ok:false, erro:"Erro ao registrar: "+e.message }; }
+}
+
+function atualizarDupla(dados) {
+  try {
+    const ss  = SpreadsheetApp.openById(SHEET_ID_TREINOS);
+    const aba = ss.getSheetByName(NOME_ABA_TREINOS);
+    if (!aba||aba.getLastRow()<2) return { ok:false, erro:"Nenhum registro encontrado." };
+    const nome      = String(dados.nome||"").trim();
+    const novaDupla = String(dados.dupla||"").trim();
+    const hoje      = new Date();
+    const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const registros = aba.getRange(2,1,aba.getLastRow()-1,6).getValues();
+    let linhaEncontrada = -1;
+    for (let i=registros.length-1; i>=0; i--) {
+      const ts      = new Date(registros[i][0]);
+      const nomeRow = String(registros[i][COL_TREINO_NOME_LISTA-1]||registros[i][COL_TREINO_NOME_TEXTO-1]).trim();
+      if (ts>=inicioDia && normalizarNome(nomeRow)===normalizarNome(nome)) { linhaEncontrada=i+2; break; }
+    }
+    if (linhaEncontrada===-1) return { ok:false, erro:"Registro não encontrado para hoje." };
+    aba.getRange(linhaEncontrada, COL_TREINO_DUPLA_LISTA).setValue(novaDupla);
+    aba.getRange(linhaEncontrada, COL_TREINO_DUPLA_TEXTO).setValue("");
+    invalidarCachePresentes();
+    return { ok:true, mensagem: novaDupla ? "Dupla atualizada: "+novaDupla+" ✅" : "Dupla removida ✅" };
+  } catch(e) { return { ok:false, erro:"Erro: "+e.message }; }
+}
+
+function apagarPresenca(nome) {
+  try {
+    const ss  = SpreadsheetApp.openById(SHEET_ID_TREINOS);
+    const aba = ss.getSheetByName(NOME_ABA_TREINOS);
+    if (!aba||aba.getLastRow()<2) return { ok:false, erro:"Nenhum registro encontrado." };
+    const hoje      = new Date();
+    const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const registros = aba.getRange(2,1,aba.getLastRow()-1,6).getValues();
+    const linhas = [];
+    for (let i=registros.length-1; i>=0; i--) {
+      const ts      = new Date(registros[i][0]);
+      const nomeRow = String(registros[i][COL_TREINO_NOME_LISTA-1]||registros[i][COL_TREINO_NOME_TEXTO-1]).trim();
+      if (ts>=inicioDia && normalizarNome(nomeRow)===normalizarNome(nome)) linhas.push(i+2);
+    }
+    if (!linhas.length) return { ok:false, erro:"Registro não encontrado." };
+    linhas.sort((a,b)=>b-a).forEach(l=>aba.deleteRow(l));
+    invalidarCachePresentes();
+    return { ok:true, mensagem:nome+" removido(a) ✅" };
+  } catch(e) { return { ok:false, erro:"Erro: "+e.message }; }
+}
+
+function getNomesPresentesHoje() {
+  try { return getPresentesHoje().filter(p=>!p.naoDebate).map(p=>p.nome); } catch(e) { return []; }
+}
+
+function verificarSenha(senha) {
+  return senha === PropertiesService.getScriptProperties().getProperty("SENHA_ADMIN");
+}
+
+function getPresentesHoje() {
+  const cache  = CacheService.getScriptCache();
+  const cached = cache.get("presentes_hoje");
+  if (cached) return JSON.parse(cached);
+  try {
+    const ss  = SpreadsheetApp.openById(SHEET_ID_TREINOS);
+    const aba = ss.getSheetByName(NOME_ABA_TREINOS);
+    if (!aba||aba.getLastRow()<2) return [];
+    const hoje      = new Date();
+    const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const dados     = aba.getRange(2,1,aba.getLastRow()-1,7).getValues();
+    const map       = new Map();
+    dados.forEach(row => {
+      const ts = new Date(row[0]);
+      if (ts < inicioDia) return;
+      const nomeLista = String(row[COL_TREINO_NOME_LISTA-1]||"").trim().replace(/^(escolher|_+|opção \d+)$/i,"");
+      const nomeTexto = String(row[COL_TREINO_NOME_TEXTO-1]||"").trim();
+      const nome      = nomeLista.length>=2 ? nomeLista : nomeTexto;
+      if (nome.length<2) return;
+      const dupLista  = String(row[COL_TREINO_DUPLA_LISTA-1]||"").trim().replace(/^(escolher|_+|opção \d+)$/i,"");
+      const dupTexto  = String(row[COL_TREINO_DUPLA_TEXTO-1]||"").trim();
+      const dupla     = dupLista.length>=2 ? dupLista : dupTexto;
+      const tipo      = String(row[6]||"ps").trim() || "ps";
+      const naoDebate = tipo === "observador";
+      map.set(normalizarNome(nome), {
+        nome, dupla, tipo, naoDebate,
+        hora: Utilities.formatDate(ts, Session.getScriptTimeZone(),"HH:mm")
+      });
+    });
+    const resultado = Array.from(map.values()).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+    cache.put("presentes_hoje", JSON.stringify(resultado), 60);
+    return resultado;
+  } catch(e) { return []; }
+}
+
+// ============================================================
+// DRAW
+// ============================================================
+function validarDuplasAdmin(duplasAdmin) {
+  const presentes = getPresentesHoje();
+  const erros = [];
+  duplasAdmin.forEach(par => {
+    const p1 = presentes.find(p => normalizarNome(p.nome) === normalizarNome(par.p1));
+    const p2 = presentes.find(p => normalizarNome(p.nome) === normalizarNome(par.p2));
+    if (!p1) { erros.push(par.p1 + " não está na lista de presentes."); return; }
+    if (!p2) { erros.push(par.p2 + " não está na lista de presentes."); return; }
+  });
+  return erros;
+}
+
+function gerarDrawWeb(juizes, duplasAdmin) {
+  try {
+    const erros = validarDuplasAdmin(duplasAdmin || []);
+    if (erros.length) return { ok:false, erro:"Conflito de duplas:\n• "+erros.join("\n• ") };
+
+    const ss  = SpreadsheetApp.openById(SHEET_ID_TREINOS);
+    const aba = ss.getSheetByName(NOME_ABA_TREINOS);
+    if (!aba) return { ok:false, erro:"Aba não encontrada." };
+
+    const hoje      = new Date();
+    const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const dados     = aba.getRange(2,1,aba.getLastRow()-1,7).getValues();
+    const map       = new Map();
+    dados.forEach(row => {
+      const ts = new Date(row[0]);
+      if (ts < inicioDia) return;
+      const nomeLista = String(row[COL_TREINO_NOME_LISTA-1]||"").trim().replace(/^(escolher|_+|opção \d+)$/i,"");
+      const nomeTexto = String(row[COL_TREINO_NOME_TEXTO-1]||"").trim();
+      const nome      = nomeLista.length>=2 ? nomeLista : nomeTexto;
+      if (nome.length<2) return;
+      const tipo      = String(row[6]||"ps").trim() || "ps";
+      if (tipo === "observador") return;
+      const dupLista  = String(row[COL_TREINO_DUPLA_LISTA-1]||"").trim().replace(/^(escolher|_+|opção \d+)$/i,"");
+      const dupTexto  = String(row[COL_TREINO_DUPLA_TEXTO-1]||"").trim();
+      const dupla     = dupLista.length>=2 ? dupLista : dupTexto;
+      map.set(normalizarNome(nome), { nome, dupla });
+    });
+
+    // Duplas forçadas pelo admin sobrescrevem o preenchimento do membro
+    (duplasAdmin||[]).forEach(par => {
+      const k1 = normalizarNome(par.p1), k2 = normalizarNome(par.p2);
+      if (map.has(k1)) { const p=map.get(k1); p.dupla=par.p2; map.set(k1,p); }
+      if (map.has(k2)) { const p=map.get(k2); p.dupla=par.p1; map.set(k2,p); }
+    });
+
+    let pessoas = Array.from(map.values());
+    if (!pessoas.length) return { ok:false, erro:"Nenhum participante hoje." };
+
+    const normsJuizes = (juizes||[]).map(j=>normalizarNome(j));
+    pessoas = pessoas.filter(p=>!normsJuizes.includes(normalizarNome(p.nome)));
+
+    const total    = pessoas.length;
+    const numSalas = Math.floor(total/8);
+    const resto    = total%8;
+    const pares    = resolverDuplasWeb(pessoas);
+    const salas    = montarDrawWeb(pares, numSalas, resto);
+
+    const nomeAba = "Draw "+Utilities.formatDate(hoje, Session.getScriptTimeZone(),"dd/MM/yyyy");
+    let abaDraw = ss.getSheetByName(nomeAba);
+    if (abaDraw) ss.deleteSheet(abaDraw);
+    abaDraw = ss.insertSheet(nomeAba);
+    salvarDrawNaPlanilha(abaDraw, salas, juizes||[], hoje, false);
+
+    return { ok:true, salas, juizes:juizes||[], total, numSalas, resto, publicado:false };
+  } catch(e) { return { ok:false, erro:e.message }; }
+}
+
+function publicarDraw() {
+  try {
+    const ss   = SpreadsheetApp.openById(SHEET_ID_TREINOS);
+    const hoje = new Date();
+    const nomeAba = "Draw "+Utilities.formatDate(hoje, Session.getScriptTimeZone(),"dd/MM/yyyy");
+    const aba = ss.getSheetByName(nomeAba);
+    if (!aba) return { ok:false, erro:"Nenhum draw encontrado para hoje." };
+    aba.getRange(1,6).setValue("PUBLICADO");
+    CacheService.getScriptCache().remove("draws_publicados");
+    return { ok:true };
+  } catch(e) { return { ok:false, erro:e.message }; }
+}
+
+function salvarDrawEditado(salasEditadas, juizesPorSala, juizes) {
+  try {
+    const ss   = SpreadsheetApp.openById(SHEET_ID_TREINOS);
+    const hoje = new Date();
+    const nomeAba = "Draw "+Utilities.formatDate(hoje, Session.getScriptTimeZone(),"dd/MM/yyyy");
+    let aba = ss.getSheetByName(nomeAba);
+    const eraPublicado = aba ? String(aba.getRange(1,6).getValue()) === "PUBLICADO" : false;
+    if (aba) ss.deleteSheet(aba);
+    aba = ss.insertSheet(nomeAba);
+    salvarDrawNaPlanilha(aba, salasEditadas, juizes||[], hoje, eraPublicado, juizesPorSala);
+    return { ok:true };
+  } catch(e) { return { ok:false, erro:e.message }; }
+}
+
+function salvarJuizesPorSala(juizesPorSala) {
+  try {
+    const ss   = SpreadsheetApp.openById(SHEET_ID_TREINOS);
+    const hoje = new Date();
+    const nomeAba = "Draw "+Utilities.formatDate(hoje, Session.getScriptTimeZone(),"dd/MM/yyyy");
+    const aba  = ss.getSheetByName(nomeAba);
+    if (!aba) return { ok:false, erro:"Nenhum draw para hoje." };
+    const dados = aba.getDataRange().getValues();
+    const publicado = String(aba.getRange(1,6).getValue()) === "PUBLICADO";
+    const draw = parsearDrawDaPlanilha(dados);
+    draw.salas.forEach(sala => { sala.juiz = (juizesPorSala||{})[sala.numero] || ""; });
+    ss.deleteSheet(aba);
+    const novaAba = ss.insertSheet(nomeAba);
+    salvarDrawNaPlanilha(novaAba, draw.salas, draw.juizes, hoje, publicado, juizesPorSala);
+    return { ok:true };
+  } catch(e) { return { ok:false, erro:e.message }; }
+}
+
+function getDrawHoje() {
+  try {
+    const ss   = SpreadsheetApp.openById(SHEET_ID_TREINOS);
+    const hoje = new Date();
+    const nomeAba = "Draw "+Utilities.formatDate(hoje, Session.getScriptTimeZone(),"dd/MM/yyyy");
+    const aba  = ss.getSheetByName(nomeAba);
+    if (!aba) return null;
+    const dados = aba.getDataRange().getValues();
+    const draw  = parsearDrawDaPlanilha(dados);
+    draw.publicado = String(aba.getRange(1,6).getValue()) === "PUBLICADO";
+    return draw;
+  } catch(e) { return null; }
+}
+
+function getDrawHojePublico() {
+  const draw = getDrawHoje();
+  if (!draw || !draw.publicado) return null;
+  return draw;
+}
+
+function getDrawsAnteriores() {
+  const cache  = CacheService.getScriptCache();
+  const cached = cache.get("draws_publicados");
+  if (cached) return JSON.parse(cached);
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID_TREINOS);
+    const lista = ss.getSheets()
+      .filter(a => {
+        if (!a.getName().startsWith("Draw ")) return false;
+        return String(a.getRange(1,6).getValue()) === "PUBLICADO";
+      })
+      .map(a => a.getName())
+      .sort().reverse();
+    cache.put("draws_publicados", JSON.stringify(lista), 300);
+    return lista;
+  } catch(e) { return []; }
+}
+
+function getDrawData(nomeAba) {
+  try {
+    const ss  = SpreadsheetApp.openById(SHEET_ID_TREINOS);
+    const aba = ss.getSheetByName(nomeAba);
+    return aba ? aba.getDataRange().getValues() : null;
+  } catch(e) { return null; }
+}
+
+// ============================================================
+// LÓGICA DE DRAW
+// ============================================================
+function resolverDuplasWeb(pessoas) {
+  const nomeMap   = new Map();
+  pessoas.forEach(p=>nomeMap.set(normalizarNome(p.nome), p.nome));
+  const querDupla = new Map();
+  pessoas.forEach(p => {
+    if (p.dupla&&p.dupla.length>=2) {
+      const nd = normalizarNome(p.dupla);
+      if (nomeMap.has(nd)) querDupla.set(normalizarNome(p.nome), nd);
+    }
+  });
+  const pareados = new Set(), pares = [];
+  querDupla.forEach((dupNorm, pesNorm) => {
+    if (pareados.has(pesNorm)||pareados.has(dupNorm)) return;
+    if (querDupla.get(dupNorm)===pesNorm) {
+      pares.push({ p1:nomeMap.get(pesNorm), p2:nomeMap.get(dupNorm), confirmado:true });
+      pareados.add(pesNorm); pareados.add(dupNorm);
+    }
+  });
+  querDupla.forEach((dupNorm, pesNorm) => {
+    if (pareados.has(pesNorm)||pareados.has(dupNorm)) return;
+    pares.push({ p1:nomeMap.get(pesNorm), p2:nomeMap.get(dupNorm), confirmado:true });
+    pareados.add(pesNorm); pareados.add(dupNorm);
+  });
+  pessoas.forEach(p => {
+    if (!pareados.has(normalizarNome(p.nome))) {
+      pares.push({ p1:p.nome, p2:null, confirmado:false });
+      pareados.add(normalizarNome(p.nome));
+    }
+  });
+  return pares;
+}
+
+function montarDrawWeb(pares, numSalas, resto) {
+  const sozinhos = embaralharWeb(pares.filter(p=>!p.p2));
+  const comDupla = embaralharWeb(pares.filter(p=>p.p2));
+  let impar = null;
+  const novos = [];
+  for (let i=0; i<sozinhos.length; i+=2) {
+    if (i+1<sozinhos.length) novos.push({ p1:sozinhos[i].p1, p2:sozinhos[i+1].p1, confirmado:false });
+    else impar = sozinhos[i].p1;
+  }
+  const paresCompletos = embaralharWeb([...comDupla,...novos]);
+  const salas = [];
+  let idx = 0;
+  for (let s=0; s<numSalas; s++) {
+    const sala = { numero:s+1, posicoes:[], incompleta:false, juiz:"" };
+    const pos  = embaralharWeb([...POSICOES_BP]);
+    for (let p=0; p<4; p++) {
+      if (idx<paresCompletos.length) {
+        sala.posicoes.push({ posicao:pos[p], p1:paresCompletos[idx].p1, p2:paresCompletos[idx].p2||"—", confirmado:paresCompletos[idx].confirmado });
+        idx++;
+      }
+    }
+    salas.push(sala);
+  }
+  if (idx<paresCompletos.length||impar) {
+    const sala = { numero:numSalas+1, posicoes:[], incompleta:true, juiz:"" };
+    const tp   = ["OG","OO","CG","CO"];
+    let p = 0;
+    while (idx<paresCompletos.length) {
+      sala.posicoes.push({ posicao:tp[p]||"Pos "+(p+1), p1:paresCompletos[idx].p1, p2:paresCompletos[idx].p2||"—", confirmado:paresCompletos[idx].confirmado });
+      idx++; p++;
+    }
+    if (impar) sala.posicoes.push({ posicao:tp[p]||"Pos "+(p+1), p1:impar, p2:"— (sem par)", confirmado:false });
+    salas.push(sala);
+  }
+  return salas;
+}
+
+function salvarDrawNaPlanilha(aba, salas, juizes, hoje, publicado, juizesPorSala) {
+  const flag = publicado ? "PUBLICADO" : "";
+  const data = [
+    ["🎯 DRAW USP DEBATE — "+Utilities.formatDate(hoje,Session.getScriptTimeZone(),"dd/MM/yyyy"),"","","","",flag],
+    ["Sala","Posição","Debatedor 1","Debatedor 2","Dupla confirmada?","Juiz da Sala"]
+  ];
+  salas.forEach(sala => {
+    const juizSala = (juizesPorSala&&juizesPorSala[sala.numero]) || sala.juiz || "";
+    sala.posicoes.forEach((pos,i) => {
+      data.push([
+        "Sala "+sala.numero+(sala.incompleta?" ★":""),
+        pos.posicao, pos.p1, pos.p2,
+        pos.confirmado?"✅ Sim":"—",
+        i===0 ? juizSala : ""
+      ]);
+    });
+    data.push(["","","","","",""]);
+  });
+  if (juizes.length>0) data.push(["⚖️ JUÍZES GERAIS",juizes.join(", "),"","","",""]);
+  aba.getRange(1,1,data.length,6).setValues(data);
+}
+
+function parsearDrawDaPlanilha(dados) {
+  const salas = []; let salaAtual = null; const juizes = [];
+  for (let i=2; i<dados.length; i++) {
+    const row = dados[i];
+    if (!row[0]) continue;
+    if (String(row[0]).startsWith("⚖️")) {
+      String(row[1]).split(",").map(j=>j.trim()).filter(j=>j).forEach(j=>juizes.push(j));
+      continue;
+    }
+    const nomeSala = String(row[0]);
+    const num = parseInt(nomeSala.replace(/\D/g,""));
+    if (!num) continue;
+    if (!salaAtual||salaAtual.numero!==num) {
+      if (salaAtual) salas.push(salaAtual);
+      salaAtual = { numero:num, posicoes:[], incompleta:nomeSala.includes("★"), juiz:"" };
+    }
+    if (!salaAtual.juiz && row[5]) salaAtual.juiz = String(row[5]).trim();
+    salaAtual.posicoes.push({ posicao:row[1], p1:row[2], p2:row[3], confirmado:String(row[4]).includes("✅") });
+  }
+  if (salaAtual) salas.push(salaAtual);
+  return { salas, juizes };
+}
+
+// normalizarNome() é fornecida por Codigo.gs (mesmo projeto).
+function embaralharWeb(arr) {
+  const a=[...arr];
+  for (let i=a.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}

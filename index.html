@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#3d0e19">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="USP Debate">
+<title>USP Debate — Treinos</title>
+<style>
+:root {
+  --bordo:       #6b1a2a;
+  --bordo-dark:  #3d0e19;
+  --bordo-mid:   #9b2d42;
+  --bordo-light: #f7eaed;
+  --gold:        #b8924a;
+  --gold-light:  #f5edd8;
+  --off-white:   #faf8f6;
+  --border:      #e4dbd5;
+  --text:        #1a1212;
+  --muted:       #7a6e6a;
+  --bg:          #f5f0ed;
+  --success:     #2e7d52;
+  --danger:      #b0392e;
+}
+@keyframes fadeSlideIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+@keyframes checkIn { 0%{transform:scale(0) rotate(-10deg);opacity:0} 60%{transform:scale(1.15) rotate(2deg)} 100%{transform:scale(1) rotate(0);opacity:1} }
+@keyframes ripple { 0%{transform:scale(0);opacity:.35} 100%{transform:scale(4);opacity:0} }
+@keyframes barGrow { from{transform:scaleX(0)} to{transform:scaleX(1)} }
+@keyframes spin { to{transform:rotate(360deg)} }
+@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(107,26,42,.4)} 50%{box-shadow:0 0 0 6px rgba(107,26,42,.0)} }
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);min-height:100vh}
+
+/* HEADER */
+.header{background:var(--bordo-dark);color:#f5eaec;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 12px rgba(61,14,25,.4)}
+.header-left{display:flex;align-items:center;gap:14px}
+.header-logo-img{height:42px;width:42px;object-fit:contain;border-radius:4px}
+.header-titles .title{font-family:Georgia,serif;font-size:14px;letter-spacing:.06em;color:#f5eaec}
+.header-titles .sub{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:rgba(245,234,236,.45);margin-top:2px}
+.header-date{font-size:11px;color:rgba(245,234,236,.5);text-align:right;line-height:1.5}
+
+/* TABS */
+.desktop-tabs{background:var(--bordo-dark);display:flex;border-top:1px solid rgba(255,255,255,.07);padding:0 20px}
+.tab{padding:10px 18px;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:rgba(245,234,236,.42);cursor:pointer;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;user-select:none}
+.tab:hover{color:rgba(245,234,236,.8)}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.bottom-nav{display:none}
+
+/* PAGES */
+.page{display:none;padding:20px;max-width:860px;margin:0 auto}
+.page.active{display:block}
+
+/* CARDS */
+.card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin-bottom:16px;animation:fadeSlideIn .35s ease both}
+.sec-label{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* FORM */
+label{display:block;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;font-weight:normal}
+input[type=text],input[type=password]{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:6px;font-size:14px;outline:none;background:var(--off-white);color:var(--text);transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}
+input:focus{border-color:var(--bordo-mid);box-shadow:0 0 0 3px rgba(107,26,42,.1)}
+.form-group{margin-bottom:16px}
+
+/* BUTTONS */
+.btn{width:100%;padding:12px;border:none;border-radius:6px;font-size:10px;letter-spacing:.13em;text-transform:uppercase;cursor:pointer;position:relative;overflow:hidden;transition:background .2s,transform .1s;margin-top:4px}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--bordo);color:#f5eaec}
+.btn-primary:hover{background:var(--bordo-mid)}
+.btn-primary:disabled{background:#bbb;cursor:not-allowed}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-danger:hover{background:#922e25}
+.btn-success{background:var(--success);color:#fff}
+.btn-success:hover{background:#245f3e}
+.btn-outline{background:#fff;color:var(--bordo);border:1.5px solid var(--bordo)}
+.btn-outline:hover{background:var(--bordo-light)}
+.btn-generate{background:var(--bordo-dark);color:var(--gold);border:1px solid rgba(184,146,74,.3)}
+.btn-generate:hover{background:var(--bordo)}
+.tipo-btn{flex:1;min-width:100px;padding:9px 12px;border:1.5px solid var(--border);border-radius:6px;background:#fff;color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .2s;font-family:-apple-system,sans-serif}
+.tipo-btn:hover{border-color:var(--bordo-mid);color:var(--bordo-mid)}
+.tipo-btn.active{background:var(--bordo);color:#f5eaec;border-color:var(--bordo)}
+.btn-publish{background:var(--success);color:#fff;font-size:11px;letter-spacing:.1em}
+.btn-publish:hover{background:#245f3e}
+.btn-publish:disabled{background:#bbb;cursor:not-allowed}
+.btn-ripple{position:absolute;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.25);pointer-events:none;transform:scale(0);animation:ripple .55s ease-out forwards}
+
+/* ALERTS */
+.alert{padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none}
+.alert.show{display:flex;align-items:center;gap:10px;animation:fadeSlideIn .3s ease both}
+.alert-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;animation:checkIn .4s ease both}
+.alert-success{background:var(--bordo-light);border:1px solid rgba(107,26,42,.2);color:var(--bordo-dark)}
+.alert-success .alert-icon{background:var(--bordo);color:#fff}
+.alert-error{background:#fdf0ef;border:1px solid #f5c2be;color:#7a1c16}
+.alert-error .alert-icon{background:var(--danger);color:#fff}
+.alert-info{background:#eef4fc;border:1px solid #bad3f0;color:#1a4a7a}
+.alert-info .alert-icon{background:#2563a8;color:#fff}
+.alert-warning{background:var(--gold-light);border:1px solid rgba(184,146,74,.4);color:#633806}
+.alert-warning .alert-icon{background:var(--gold);color:#fff}
+
+/* PRESENTE ITEM */
+.presente-item{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--bg);animation:fadeSlideIn .3s ease both}
+.presente-item:last-child{border-bottom:none}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--bordo-light);border:1px solid rgba(107,26,42,.18);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--bordo);flex-shrink:0}
+.presente-nome{font-size:13px;font-weight:600;color:var(--text)}
+.presente-dupla{font-size:11px;color:var(--muted);margin-top:1px}
+.presente-hora{font-size:11px;color:#bbb}
+.btn-edit-small{background:none;border:1px solid var(--border);border-radius:4px;padding:3px 9px;font-size:10px;color:var(--muted);cursor:pointer;letter-spacing:.05em;transition:border-color .15s,color .15s}
+.btn-edit-small:hover{border-color:var(--bordo-mid);color:var(--bordo-mid)}
+.btn-del-small{background:#fdf0ef;border:1px solid #f5c2be;border-radius:4px;padding:3px 9px;font-size:10px;color:var(--danger);cursor:pointer;transition:background .15s}
+.btn-del-small:hover{background:#fce0de}
+
+/* DRAW - SALAS */
+.sala-card{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;animation:fadeSlideIn .35s ease both}
+.sala-header{background:var(--bordo-dark);color:#f5eaec;padding:11px 18px;display:flex;align-items:center;justify-content:space-between;font-size:10px;letter-spacing:.13em;text-transform:uppercase;gap:8px}
+.sala-badge{background:rgba(184,146,74,.15);color:var(--gold);font-size:10px;padding:2px 10px;border-radius:20px;border:1px solid rgba(184,146,74,.3);white-space:nowrap}
+.sala-juiz-pill{background:rgba(255,255,255,.1);color:rgba(245,234,236,.8);font-size:10px;padding:2px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.15);white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis}
+
+/* POSICAO ROW - base */
+.posicao-row{background:#fff;display:grid;grid-template-columns:54px 1fr 1fr 64px;padding:10px 18px;align-items:center;gap:8px;border-bottom:1px solid var(--bg);font-size:13px;transition:background .15s}
+.posicao-row:last-child{border-bottom:none}
+.posicao-row:hover{background:var(--off-white)}
+.posicao-badge{font-size:10px;font-weight:700;letter-spacing:.04em;padding:4px 7px;border-radius:4px;text-align:center}
+.pos-OG{background:#eef5e8;color:#27500a;border:1px solid #c0dd97}
+.pos-OO{background:#e6f0f8;color:#0c447c;border:1px solid #b5d4f4}
+.pos-CG{background:#fdf5e4;color:#633806;border:1px solid #fac775}
+.pos-CO{background:var(--bordo-light);color:var(--bordo);border:1px solid rgba(107,26,42,.2)}
+.debatedor{font-weight:600;color:var(--text)}
+.debatedor-2{color:var(--muted)}
+.conf-badge{font-size:11px;text-align:center}
+.juiz-section{background:var(--gold-light);border:1px solid rgba(184,146,74,.3);border-radius:10px;padding:14px 18px;margin-bottom:14px}
+.juiz-section h3{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:#633806;margin-bottom:10px;font-weight:normal}
+.juiz-nome{background:#fff;border-radius:6px;padding:7px 12px;margin-bottom:6px;font-size:13px;font-weight:600;color:var(--text)}
+
+/* DRAG & DROP */
+.posicao-row[draggable]{cursor:grab;user-select:none}
+.posicao-row[draggable]:active{cursor:grabbing}
+.posicao-row.drag-over{background:rgba(107,26,42,.06);outline:2px dashed var(--bordo-mid);outline-offset:-2px}
+.posicao-row.dragging{opacity:.4;transform:scale(.98)}
+.drag-handle{color:#ccc;font-size:14px;cursor:grab;margin-right:2px;flex-shrink:0}
+.posicao-row[draggable]:hover .drag-handle{color:var(--bordo-mid)}
+
+/* JUIZ POR SALA (admin edit mode) */
+.sala-juiz-input{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--off-white);color:var(--text);outline:none;transition:border-color .2s}
+.sala-juiz-input:focus{border-color:var(--gold);box-shadow:0 0 0 2px rgba(184,146,74,.15)}
+.sala-juiz-row{padding:10px 18px;background:var(--gold-light);border-top:1px solid rgba(184,146,74,.2);display:flex;align-items:center;gap:10px}
+.sala-juiz-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#854f0b;white-space:nowrap}
+
+/* DUPLAS ADMIN */
+.dupla-admin-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bg);animation:fadeSlideIn .25s ease both}
+.dupla-admin-item:last-child{border-bottom:none}
+.dupla-admin-arrow{color:var(--muted);font-size:12px;flex-shrink:0}
+.dupla-admin-remove{background:none;border:1px solid #f5c2be;border-radius:4px;padding:3px 8px;font-size:10px;color:var(--danger);cursor:pointer;flex-shrink:0;transition:background .15s}
+.dupla-admin-remove:hover{background:#fce0de}
+
+/* RASCUNHO BADGE */
+.rascunho-banner{background:var(--gold-light);border:1px solid rgba(184,146,74,.4);border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;animation:fadeSlideIn .3s ease both}
+.rascunho-text{font-size:12px;color:#633806;font-weight:600}
+.rascunho-sub{font-size:11px;color:#854f0b;margin-top:2px}
+
+/* ADMIN */
+.admin-locked{text-align:center;padding:24px 0}
+.lock-icon{font-size:2.5rem;margin-bottom:12px}
+.stat-row{display:flex;gap:10px;margin-bottom:18px}
+.stat-box{flex:1;background:var(--off-white);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center}
+.stat-box .num{font-size:28px;font-family:Georgia,serif;color:var(--bordo-dark)}
+.stat-box .lbl{font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.draw-actions{display:flex;gap:8px;flex-wrap:wrap}
+.draw-actions .btn{margin-top:0;flex:1;min-width:140px}
+.juiz-tag{display:inline-flex;align-items:center;gap:6px;background:var(--gold-light);border:1px solid rgba(184,146,74,.35);border-radius:20px;padding:4px 12px;margin:4px;font-size:12px;font-weight:600;color:#633806}
+.juiz-tag button{background:none;border:none;cursor:pointer;color:#854f0b;font-size:14px;line-height:1;padding:0}
+#juizes-container{margin-bottom:12px;min-height:36px}
+
+/* HISTORICO */
+.historico-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--bg);cursor:pointer;animation:fadeSlideIn .3s ease both;transition:color .15s}
+.historico-item:last-child{border-bottom:none}
+.historico-item:hover .hist-date{color:var(--bordo-mid)}
+.hist-date{font-size:13px;font-weight:600;color:var(--text);transition:color .15s}
+.hist-arrow{font-size:12px;color:#bbb}
+
+/* AUTOCOMPLETE */
+.datalist-input{position:relative}
+.autocomplete-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--bordo-mid);border-top:none;border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;z-index:9999;box-shadow:0 6px 18px rgba(61,14,25,.12);display:none}
+.autocomplete-item{padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--bg)}
+.autocomplete-item:last-child{border-bottom:none}
+.autocomplete-item:hover{background:var(--bordo-light);color:var(--bordo-dark)}
+
+/* SPINNER */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle}
+
+/* MOBILE */
+@media (max-width:768px),(pointer:coarse){
+  .desktop-tabs{display:none}
+  .bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);z-index:100;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -2px 12px rgba(61,14,25,.1)}
+  .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 8px;cursor:pointer;border:none;background:none;color:#aaa}
+  .nav-item.active{color:var(--bordo)}
+  .nav-item .nav-icon{font-size:1.3rem;margin-bottom:2px}
+  .nav-item .nav-label{font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+  .nav-indicator{width:4px;height:4px;border-radius:50%;background:var(--bordo);margin:2px auto 0;opacity:0}
+  .nav-item.active .nav-indicator{opacity:1}
+  .page{padding:14px 12px 90px}
+  .card{border-radius:12px;padding:16px 14px}
+  input[type=text],input[type=password]{padding:13px 14px;font-size:16px}
+  .btn{padding:14px;font-size:11px}
+  .posicao-row{grid-template-columns:50px 1fr 1fr}
+  .conf-badge{display:none}
+  .stat-box .num{font-size:24px}
+  .draw-actions .btn{min-width:unset}
+}
+
+/* ════════════════════════════════════════════════════════════ */
+/* POLISH — aba Presença (escopo isolado em #page-presenca)       */
+/* ════════════════════════════════════════════════════════════ */
+.header{background:linear-gradient(135deg,#3d0e19 0%,#6b1a2a 100%)}
+
+#page-presenca .card{
+  border:none;
+  border-radius:16px;
+  box-shadow:0 4px 22px rgba(61,14,25,.07),0 1px 3px rgba(61,14,25,.06);
+}
+#page-presenca .sec-label{font-size:10px;color:var(--bordo-mid)}
+
+/* Tipo de participante — pills */
+#page-presenca .tipo-btn{
+  border-radius:999px;
+  padding:11px 12px;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  font-weight:600;
+}
+#page-presenca .tipo-btn .ico{font-size:14px;line-height:1}
+#page-presenca .tipo-btn.active{
+  box-shadow:0 5px 14px rgba(107,26,42,.26);
+  transform:translateY(-1px);
+}
+
+/* Botão confirmar — mais presença */
+#btn-registrar{
+  padding:15px;border-radius:11px;font-size:11px;
+  background:linear-gradient(135deg,#6b1a2a,#9b2d42);
+  box-shadow:0 6px 18px rgba(107,26,42,.3);
+}
+#btn-registrar:active{transform:translateY(1px) scale(.99)}
+
+/* Contador de presentes — badge */
+#page-presenca #count-presentes{
+  background:var(--bordo);color:#fff!important;
+  padding:2px 10px;border-radius:999px;font-weight:700;font-size:12px;
+}
+
+/* Itens de presentes — mini-cards com profundidade */
+#page-presenca .presente-item{
+  border-bottom:none;
+  background:var(--off-white);
+  border:1px solid var(--border);
+  border-radius:13px;
+  padding:12px 14px;
+  margin-bottom:8px;
+  transition:transform .15s,box-shadow .15s;
+}
+#page-presenca .presente-item:last-child{margin-bottom:0}
+#page-presenca .presente-item:hover{
+  transform:translateY(-1px);
+  box-shadow:0 5px 16px rgba(61,14,25,.09);
+}
+#page-presenca .avatar{
+  background:linear-gradient(135deg,var(--bordo),var(--bordo-mid));
+  color:#fff;border:none;
+  box-shadow:0 2px 7px rgba(107,26,42,.28);
+}
+#page-presenca .presente-hora{
+  background:var(--bordo-light);color:var(--bordo)!important;
+  padding:3px 9px;border-radius:999px;font-weight:600;
+}
+
+/* Skeleton de carregamento */
+.skeleton-row{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 14px;margin-bottom:8px;
+  border:1px solid var(--border);border-radius:13px;background:var(--off-white);
+}
+.sk{background:linear-gradient(90deg,#ece6e2 25%,#f6f1ee 50%,#ece6e2 75%);
+  background-size:200% 100%;animation:shimmer 1.3s linear infinite;border-radius:6px}
+.sk-avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0}
+.sk-line{height:10px}
+@keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+
+/* Empty state */
+#page-presenca .empty-state{text-align:center;padding:28px 16px;color:var(--muted)}
+#page-presenca .empty-state .emoji{font-size:2.4rem;margin-bottom:8px;opacity:.6}
+#page-presenca .empty-state .txt{font-size:13px;font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-titles">
+      <div class="title">USP Debate</div>
+      <div class="sub">Sistema de Treinos BP</div>
+    </div>
+  </div>
+  <div class="header-date" id="data-hoje"></div>
+</div>
+
+<div class="desktop-tabs">
+  <div class="tab active" onclick="mudarAba('presenca',this)">Presença</div>
+  <div class="tab" onclick="mudarAba('draw',this)">Draw</div>
+  <div class="tab" onclick="mudarAba('historico',this)">Histórico</div>
+  <div class="tab" onclick="mudarAba('admin',this)">Admin</div>
+</div>
+
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="mudarAba('presenca',this)">
+    <span class="nav-icon">📋</span><span class="nav-label">Presença</span><div class="nav-indicator"></div>
+  </button>
+  <button class="nav-item" onclick="mudarAba('draw',this)">
+    <span class="nav-icon">🎯</span><span class="nav-label">Draw</span><div class="nav-indicator"></div>
+  </button>
+  <button class="nav-item" onclick="mudarAba('historico',this)">
+    <span class="nav-icon">📚</span><span class="nav-label">Histórico</span><div class="nav-indicator"></div>
+  </button>
+  <button class="nav-item" onclick="mudarAba('admin',this)">
+    <span class="nav-icon">⚙️</span><span class="nav-label">Admin</span><div class="nav-indicator"></div>
+  </button>
+</nav>
+
+<!-- ════ PRESENÇA ════ -->
+<div id="page-presenca" class="page active">
+  <div class="card">
+    <div class="sec-label">Registrar presença</div>
+    <div id="alerta-presenca" class="alert"></div>
+
+    <div class="form-group">
+      <label>Você vai debater hoje?</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" class="tipo-btn active" data-tipo="ps" onclick="selecionarTipo('ps')"><span class="ico">🎤</span> Membro do PS</button>
+        <button type="button" class="tipo-btn" data-tipo="visitante" onclick="selecionarTipo('visitante')"><span class="ico">👋</span> Visitante</button>
+        <button type="button" class="tipo-btn" data-tipo="observador" onclick="selecionarTipo('observador')"><span class="ico">👀</span> Só vou assistir</button>
+      </div>
+    </div>
+
+    <div class="form-group datalist-input" id="grupo-nome-ps">
+      <label>Seu nome *</label>
+      <input type="text" id="inp-nome-ps" placeholder="Selecione seu nome na lista..." autocomplete="off"
+        oninput="filtrarNomesPS()" onblur="fecharAuto('auto-nome-ps')">
+      <div class="autocomplete-list" id="auto-nome-ps"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:5px">Apenas nomes cadastrados no PS são aceitos.</div>
+    </div>
+
+    <div class="form-group" id="grupo-nome-visitante" style="display:none">
+      <label>Seu nome *</label>
+      <input type="text" id="inp-nome-visitante" placeholder="Digite seu nome completo..." autocomplete="off">
+    </div>
+
+    <div class="form-group datalist-input" id="grupo-nome-observador" style="display:none">
+      <label>Seu nome *</label>
+      <input type="text" id="inp-nome-obs" placeholder="Digite ou selecione seu nome..." autocomplete="off"
+        oninput="filtrarNomesObs()" onblur="fecharAuto('auto-nome-obs')">
+      <div class="autocomplete-list" id="auto-nome-obs"></div>
+    </div>
+
+    <div class="form-group datalist-input" id="grupo-dupla">
+      <label>Dupla (opcional)</label>
+      <input type="text" id="inp-dupla" placeholder="Selecione quem vai debater hoje..." autocomplete="off" oninput="filtrarNomesDupla()">
+      <div class="autocomplete-list" id="autocomplete-dupla"></div>
+      <div id="inp-dupla-hint" style="display:none;align-items:center;gap:6px;margin-top:6px;font-size:11px;color:#a32d2d;background:#fdf0ef;border:1px solid #f5c2be;border-radius:6px;padding:6px 10px"><span style="font-weight:700">!</span><span>Digite e <strong>selecione</strong> um nome da lista — clicar no nome é obrigatório.</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:5px">Só aparecem pessoas que já registraram presença para debater.</div>
+    </div>
+    <button class="btn btn-primary" onclick="registrarPresenca()" id="btn-registrar">Confirmar presença</button>
+  </div>
+
+  <div class="card" id="card-editar" style="display:none;border-left:3px solid var(--bordo-mid)">
+    <div class="sec-label">Editar presença</div>
+    <div id="alerta-edicao" class="alert"></div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Editando: <strong id="nome-logado" style="color:var(--text)"></strong></p>
+    <div class="form-group datalist-input">
+      <label>Nova dupla (vazio para remover)</label>
+      <input type="text" id="inp-dupla-edit" placeholder="Nome da dupla..." autocomplete="off" oninput="filtrarNomesDuplaEdit()" onblur="fecharAuto('autocomplete-dupla-edit');validarCampoRestrito('inp-dupla-edit',nomesPresentesHoje)">
+      <div class="autocomplete-list" id="autocomplete-dupla-edit"></div>
+      <div id="inp-dupla-edit-hint" style="display:none;align-items:center;gap:6px;margin-top:6px;font-size:11px;color:#a32d2d;background:#fdf0ef;border:1px solid #f5c2be;border-radius:6px;padding:6px 10px"><span style="font-weight:700;font-size:13px">!</span><span>Selecione um nome clicando na lista.</span></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="salvarEdicao()" style="flex:1;margin-top:0">Salvar</button>
+      <button class="btn btn-danger" onclick="removerDupla()" style="flex:1;margin-top:0">Remover dupla</button>
+    </div>
+    <button class="btn btn-outline" onclick="fecharEdicao()" style="margin-top:8px;font-size:10px">Cancelar</button>
+  </div>
+
+  <div class="card">
+    <div class="sec-label">Presentes hoje <span style="color:var(--text);font-size:11px;letter-spacing:0;margin-left:4px" id="count-presentes">0</span></div>
+    <div id="lista-presentes-pub">
+      <div class="skeleton-row"><div class="sk sk-avatar"></div><div style="flex:1"><div class="sk sk-line" style="width:55%"></div><div class="sk sk-line" style="width:35%;margin-top:6px"></div></div></div>
+      <div class="skeleton-row"><div class="sk sk-avatar"></div><div style="flex:1"><div class="sk sk-line" style="width:45%"></div><div class="sk sk-line" style="width:30%;margin-top:6px"></div></div></div>
+      <div class="skeleton-row"><div class="sk sk-avatar"></div><div style="flex:1"><div class="sk sk-line" style="width:60%"></div><div class="sk sk-line" style="width:38%;margin-top:6px"></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ DRAW (membros) ════ -->
+<div id="page-draw" class="page">
+  <div id="draw-container">
+    <div style="text-align:center;padding:48px 20px;color:#bbb">
+      <div style="font-size:2.5rem;margin-bottom:12px">🎯</div>
+      <div style="font-size:14px;font-weight:600;color:var(--muted)">O draw ainda não foi publicado.</div>
+      <div style="font-size:12px;margin-top:6px">Aguarde o administrador publicar o draw.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ HISTÓRICO ════ -->
+<div id="page-historico" class="page">
+  <div class="card">
+    <div class="sec-label">Draws anteriores</div>
+    <div id="historico-lista"><div style="text-align:center;color:#bbb;padding:20px;font-size:13px">Carregando...</div></div>
+  </div>
+  <div id="historico-draw-detail"></div>
+</div>
+
+<!-- ════ ADMIN ════ -->
+<div id="page-admin" class="page">
+  <div id="admin-locked" class="card admin-locked">
+    <div class="lock-icon">🔒</div>
+    <div class="sec-label" style="justify-content:center;margin-bottom:20px">Área administrativa</div>
+    <div class="form-group">
+      <input type="password" id="inp-senha" placeholder="Senha de administrador" onkeypress="if(event.key==='Enter')verificarSenha()">
+    </div>
+    <button class="btn btn-primary" onclick="verificarSenha()">Entrar</button>
+    <div id="alerta-admin-login" class="alert" style="margin-top:14px"></div>
+  </div>
+
+  <div id="admin-painel" style="display:none">
+
+    <div class="card">
+      <div class="sec-label">Estatísticas de hoje</div>
+      <div class="stat-row">
+        <div class="stat-box"><div class="num" id="stat-total">0</div><div class="lbl">Presentes</div></div>
+        <div class="stat-box"><div class="num" id="stat-salas">0</div><div class="lbl">Salas de 8</div></div>
+        <div class="stat-box"><div class="num" id="stat-resto">0</div><div class="lbl">Sobram</div></div>
+      </div>
+      <div id="alerta-admin" class="alert"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-label">Duplas manuais (admin)</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+        Pareie dois participantes. Se algum já tiver dupla preenchida, o sistema avisa antes de sobrescrever.
+      </p>
+      <div id="duplas-admin-lista" style="margin-bottom:12px"></div>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:end;margin-bottom:8px">
+        <div class="datalist-input">
+          <label>Pessoa 1</label>
+          <input type="text" id="inp-da-p1" placeholder="Nome..." autocomplete="off" oninput="filtrarDA('inp-da-p1','auto-da-p1')" onblur="fecharAuto('auto-da-p1')">
+          <div class="autocomplete-list" id="auto-da-p1"></div>
+        </div>
+        <div style="padding-bottom:11px;color:var(--muted);font-size:13px">↔</div>
+        <div class="datalist-input">
+          <label>Pessoa 2</label>
+          <input type="text" id="inp-da-p2" placeholder="Nome..." autocomplete="off" oninput="filtrarDA('inp-da-p2','auto-da-p2')" onblur="fecharAuto('auto-da-p2')">
+          <div class="autocomplete-list" id="auto-da-p2"></div>
+        </div>
+      </div>
+      <button class="btn btn-outline" onclick="adicionarDuplaAdmin()" style="margin-top:0">+ Adicionar par</button>
+    </div>
+
+    <div class="card">
+      <div class="sec-label">Juízes gerais (opcional)</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Pessoas que vão julgar e não entram no draw.</p>
+      <div id="juizes-container"></div>
+      <div class="form-group datalist-input">
+        <input type="text" id="inp-juiz" placeholder="Nome do juiz..." autocomplete="off"
+          oninput="filtrarNomesJuiz()" onkeypress="if(event.key==='Enter')adicionarJuiz()">
+        <div class="autocomplete-list" id="autocomplete-juiz"></div>
+      </div>
+      <button class="btn btn-outline" onclick="adicionarJuiz()" style="margin-bottom:4px">+ Adicionar juiz</button>
+    </div>
+
+    <div class="card">
+      <div class="sec-label">Draw</div>
+      <div id="alerta-draw-admin" class="alert"></div>
+      <div class="draw-actions" style="margin-bottom:0">
+        <button class="btn btn-generate" onclick="gerarDraw()" id="btn-gerar">Gerar draw</button>
+        <button class="btn btn-danger" onclick="regerarDraw()" id="btn-regerar" style="display:none">Regerar</button>
+        <button class="btn btn-publish" onclick="publicarDraw()" id="btn-publicar" style="display:none">Publicar para membros</button>
+      </div>
+    </div>
+
+    <div id="admin-draw-preview" style="display:none">
+      <div class="rascunho-banner">
+        <div>
+          <div class="rascunho-text">📝 Rascunho — visível apenas para admins</div>
+          <div class="rascunho-sub">Para trocar pessoas: toque em um nome e depois no outro. Adicione juízes por sala e publique.</div>
+        </div>
+      </div>
+      <div id="admin-draw-container"></div>
+      <div class="card" style="margin-top:4px">
+        <div id="alerta-draw-salvo" class="alert"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline" onclick="salvarEdicaoDraw()" style="flex:1;margin-top:0">Salvar alterações</button>
+          <button class="btn btn-publish" onclick="publicarDraw()" id="btn-publicar-2" style="flex:1;margin-top:0">Publicar para membros</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-label">Lista de presentes</div>
+      <div id="admin-lista-presentes" style="font-size:13px;color:var(--muted)">Carregando...</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// CONFIG — cole aqui a URL /exec da sua implantação do Apps Script
+// ════════════════════════════════════════════════════════════
+const API_URL = "https://script.google.com/macros/s/AKfycbxlRTkB1GjcRITvLzfLkw3sH4LLOVsCEEv4WXhK_bL7s2Yib7raK8UsEjKTFBZJX1C1/exec";
+
+// ── Cliente da API (JSONP — não passa por CORS) ─────────────────
+function callAPI(action, payload){
+  return new Promise((resolve, reject)=>{
+    const cb = '_jsonp_' + Date.now() + '_' + Math.floor(Math.random()*1e6);
+    const script = document.createElement('script');
+    let pronto = false;
+    const timer = setTimeout(()=>{ if(!pronto){ limpar(); reject(new Error('Tempo esgotado')); } }, 30000);
+    function limpar(){
+      pronto = true;
+      delete window[cb];
+      clearTimeout(timer);
+      if(script.parentNode) script.parentNode.removeChild(script);
+    }
+    window[cb] = function(resp){
+      limpar();
+      if(resp && resp.sucesso) resolve(resp.data);
+      else reject(new Error((resp && resp.erro) || 'Erro na API'));
+    };
+    script.onerror = function(){ if(!pronto){ limpar(); reject(new Error('Erro de conexão')); } };
+    script.src = API_URL
+      + '?action='   + encodeURIComponent(action)
+      + '&callback=' + cb
+      + '&p='        + encodeURIComponent(JSON.stringify(payload || {}));
+    document.head.appendChild(script);
+  });
+}
+
+// ── Cache de leitura no cliente (evita requests repetidos) ──────
+const _apiCache = {};
+function callAPICached(action, payload, ttlMs){
+  const key = action + '|' + JSON.stringify(payload || {});
+  const hit = _apiCache[key];
+  if (hit && (Date.now() - hit.t) < ttlMs) return Promise.resolve(hit.v);
+  return callAPI(action, payload).then(v => { _apiCache[key] = { t:Date.now(), v:v }; return v; });
+}
+function invalidarCache(action){
+  Object.keys(_apiCache).forEach(k => { if (k.indexOf(action + '|') === 0) delete _apiCache[k]; });
+}
+
+// Lista do PS embutida — constante, não precisa de request ao servidor.
+const NOMES_PS = [
+  "Alanna Carriço Vilela","Álvaro Ribeiro Furtado","Ana Lara Rodrigues","Ana Luiza",
+  "Annelyce maryanne de jesus","Aretha","Augusto Silva de Queiroz",
+  "Beatriz Abrahão","Beatriz Custódio",
+  "Caio Krüger Monteiro","Caio Massi de Souza","Carlos Eduardo Dutra Bodart",
+  "Carolina Sacchetto da Silva","Cinthia Borelli",
+  "Daniel Loureiro Rodrigues","Darlei Pamplona",
+  "Eduardo Kohlsdorf","Enzo Augusto Federle Gemelli",
+  "Felipe Barreto Távora","Felipe Gabriel Courel Souza",
+  "Gabriel Grazia de Azambuja Villanova","Gabriel kenzo kobayashi",
+  "Gabriela Espinhara Siqueira","Gabriela Risso Fernandes","Gabriela Saito Pereira",
+  "Giuseppe Argenta Zaneti","Guilherme Mecenas Duarte","Gustavo Pettirossi",
+  "Heitor Carlos Soares","Heloísa Viana Fonsêca","Henry Gabriel Lima da Silva",
+  "Isabela Rebello Presgrave","Izabela de Caria Bertanha",
+  "Jean Lima Neres","Jeissymirian Saraiva Barreto",
+  "João Marcelo Silva Gomes","João Paulo Felipe Gonçalves",
+  "João Pedro Rufino Sandamil","João Pedro Silveira Ferreira",
+  "Julia Mendes Cosme","Julia Oliveira Rezende Coêlho","Julia Rangel Rosa Nasser",
+  "Kaique Antunes","Kaique Lima Santos","Kleber Alves Henriques dos Santos",
+  "Leonardo Carneiro Burlacchini de Carvalho","Lívia Dantas do Nascimento",
+  "Lucas De Oliveira De Almeida",
+  "Manuela Maria Martins Adriano","Manuela Reis Garin",
+  "Manuella Félix Teodoro Magalhães e Souza","Marcela Fusco Pina",
+  "Maria Eduarda Trimont Galhardo","Maria Vitória Rocha Veloso",
+  "Maryane Feitoza","Mateus Torres Nery Figueiredo","Matheus Martins Trandafilov",
+  "Max Vaz de Sousa Leite",
+  "Nicolas Fagundes Justi Muniz","Nícolas Marques Preto",
+  "Pedro Antônio Almeida e Nogueira","Pedro da Costa Silva",
+  "Pedro dos Santos Pereira","Pedro Henrique G. Candido",
+  "Rafael Noia Meira do Nascimento","Saulo Domingos Lima","Sofia Mendes Nery Costa",
+  "Thiago Fernando Martins Gomes","Tomas Wolffenbüttel",
+  "Victor Souza Santos","Wesley Santos","Yasmim Nobre de Oliveira"
+].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+
+// ── Estado global ──────────────────────────────────────────────
+let nomesCadastrados   = NOMES_PS;
+let nomesPresentesHoje = [];
+let presentesCompleto  = [];
+let juizesEscolhidos   = [];
+let duplasAdmin        = [];
+let drawAtual          = null;
+let adminLogado        = false;
+
+// ── Init ───────────────────────────────────────────────────────
+window.onload = function() {
+  const hoje = new Date();
+  document.getElementById('data-hoje').textContent =
+    hoje.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+  carregarPresentes();
+  carregarDrawPublico();
+};
+
+// ── Abas ───────────────────────────────────────────────────────
+function mudarAba(aba, el) {
+  document.querySelectorAll('.tab,.nav-item').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const idx = ['presenca','draw','historico','admin'].indexOf(aba);
+  document.querySelectorAll('.tab')[idx]?.classList.add('active');
+  document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
+  document.getElementById('page-'+aba).classList.add('active');
+  window.scrollTo(0,0);
+  if (aba==='presenca')             carregarPresentes();
+  if (aba==='draw')                 carregarDrawPublico();
+  if (aba==='historico')            carregarHistorico();
+  if (aba==='admin'&&adminLogado)   { atualizarStatsAdmin(); carregarListaAdmin(); }
+}
+
+// ── Autocomplete ───────────────────────────────────────────────
+function norm(s){return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");}
+function fecharAuto(id){setTimeout(()=>{const l=document.getElementById(id);if(l){l.style.display='none';l.innerHTML='';}},180);}
+
+function mostrarSugestoes(inputId,listaId,fonte){
+  const val  = document.getElementById(inputId).value.trim();
+  const lista = document.getElementById(listaId);
+  if (!val||val.length<1){lista.style.display='none';lista.innerHTML='';return;}
+  const filtrados=(fonte||nomesCadastrados).filter(n=>norm(n).includes(norm(val))).slice(0,8);
+  if (!filtrados.length){lista.style.display='none';return;}
+  lista.innerHTML='';
+  filtrados.forEach(n=>{
+    const div=document.createElement('div');
+    div.className='autocomplete-item';div.textContent=n;
+    div.addEventListener('mousedown',e=>{
+      e.preventDefault();
+      document.getElementById(inputId).value=n;
+      marcarSelecionado(inputId);
+      lista.style.display='none';lista.innerHTML='';
+    });
+    lista.appendChild(div);
+  });
+  lista.style.display='block';
+}
+
+document.addEventListener('click',e=>{
+  document.querySelectorAll('.autocomplete-list').forEach(l=>{
+    if(!l.parentElement.contains(e.target)){l.style.display='none';l.innerHTML='';}
+  });
+});
+
+// ── Alertas ────────────────────────────────────────────────────
+function mostrarAlerta(el,tipo,msg){
+  const icons={success:'✓',error:'✕',info:'i',warning:'!'};
+  el.className='alert show alert-'+tipo;
+  el.innerHTML='<div class="alert-icon">'+(icons[tipo]||'i')+'</div><div style="flex:1">'+msg+'</div>';
+  if(tipo==='success') setTimeout(()=>el.classList.remove('show'),4000);
+}
+
+// ── Presença ───────────────────────────────────────────────────
+let tipoAtual='ps';
+function selecionarTipo(t){
+  tipoAtual=t;
+  document.querySelectorAll('.tipo-btn').forEach(b=>b.classList.toggle('active',b.dataset.tipo===t));
+  document.getElementById('grupo-nome-ps').style.display        = t==='ps'         ? '' : 'none';
+  document.getElementById('grupo-nome-visitante').style.display  = t==='visitante'  ? '' : 'none';
+  document.getElementById('grupo-nome-observador').style.display = t==='observador' ? '' : 'none';
+  document.getElementById('grupo-dupla').style.display           = t==='observador' ? 'none' : '';
+}
+
+function getNomeAtual(){
+  if(tipoAtual==='ps')         return document.getElementById('inp-nome-ps').value.trim();
+  if(tipoAtual==='visitante')  return document.getElementById('inp-nome-visitante').value.trim();
+  if(tipoAtual==='observador') return document.getElementById('inp-nome-obs').value.trim();
+  return '';
+}
+
+function limparFormPresenca(){
+  document.getElementById('inp-nome-ps').value='';
+  document.getElementById('inp-nome-visitante').value='';
+  document.getElementById('inp-nome-obs').value='';
+  document.getElementById('inp-dupla').value='';
+}
+
+// ── Campos restritos (dupla): feedback visual reativo ──
+function resetCampoRestrito(id){
+  const el=document.getElementById(id);if(!el)return;
+  el.dataset.selecionado='';
+  el.style.borderColor='';el.style.boxShadow='';
+  const hint=document.getElementById(id+'-hint');
+  if(hint)hint.style.display='none';
+}
+function marcarSelecionado(id){
+  const el=document.getElementById(id);if(!el)return;
+  el.dataset.selecionado='true';
+  el.style.borderColor='var(--success)';el.style.boxShadow='0 0 0 3px rgba(46,125,82,.12)';
+  const hint=document.getElementById(id+'-hint');
+  if(hint)hint.style.display='none';
+}
+function validarCampoRestrito(id,fonte){
+  const el=document.getElementById(id);if(!el)return true;
+  const val=el.value.trim();
+  if(!val)return true;
+  if(el.dataset.selecionado==='true')return true;
+  el.style.borderColor='#e24b4a';el.style.boxShadow='0 0 0 3px rgba(226,75,74,.12)';
+  const hint=document.getElementById(id+'-hint');
+  if(hint)hint.style.display='flex';
+  el.focus();
+  return false;
+}
+
+// PS + visitantes presentes que não estão no PS
+function getNomesDupla(){
+  const base=[...nomesCadastrados];
+  nomesPresentesHoje.forEach(n=>{
+    if(!base.some(b=>norm(b)===norm(n))) base.push(n);
+  });
+  return base.sort((a,b)=>a.localeCompare(b,'pt-BR'));
+}
+function filtrarNomesPS(){mostrarSugestoes('inp-nome-ps','auto-nome-ps',nomesCadastrados);}
+function filtrarNomesObs(){mostrarSugestoes('inp-nome-obs','auto-nome-obs',nomesCadastrados);}
+function filtrarNomesDupla(){resetCampoRestrito('inp-dupla');mostrarSugestoes('inp-dupla','autocomplete-dupla',getNomesDupla());}
+function filtrarNomesDuplaEdit(){resetCampoRestrito('inp-dupla-edit');mostrarSugestoes('inp-dupla-edit','autocomplete-dupla-edit',getNomesDupla());}
+function filtrarNomesJuiz(){mostrarSugestoes('inp-juiz','autocomplete-juiz',nomesCadastrados);}
+function filtrarDA(inpId,autoId){mostrarSugestoes(inpId,autoId,nomesPresentesHoje.length?nomesPresentesHoje:nomesCadastrados);}
+
+function registrarPresenca(){
+  const nome=getNomeAtual();
+  const dupla=document.getElementById('inp-dupla').value.trim();
+  const btn=document.getElementById('btn-registrar');
+  const alerta=document.getElementById('alerta-presenca');
+  if(!nome){mostrarAlerta(alerta,'error','Por favor, informe seu nome.');return;}
+  if(tipoAtual==='ps' && !nomesCadastrados.some(n=>norm(n)===norm(nome))){
+    mostrarAlerta(alerta,'error','Selecione seu nome da lista do PS.');return;
+  }
+  if(!validarCampoRestrito('inp-dupla',nomesPresentesHoje)){
+    mostrarAlerta(alerta,'error','Selecione a dupla clicando em um nome da lista — não vale só digitar.');
+    return;
+  }
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Registrando...';
+  callAPI('registrarPresenca',{nome,dupla,tipo:tipoAtual})
+    .then(res=>{
+      btn.disabled=false;btn.textContent='Confirmar presença';
+      if(res.ok){
+        mostrarAlerta(alerta,'success',res.mensagem);
+        limparFormPresenca();
+        invalidarCache('getPresentesHoje');
+        setTimeout(carregarPresentes,1000);
+      } else mostrarAlerta(alerta,res.erro.includes('já registrou')?'info':'error',res.erro);
+    })
+    .catch(()=>{btn.disabled=false;btn.textContent='Confirmar presença';mostrarAlerta(alerta,'error','Erro de conexão.');});
+}
+
+// ── Edição presença ────────────────────────────────────────────
+let nomeEditando='';
+function abrirEdicao(nome,duplaAtual){
+  nomeEditando=nome;
+  document.getElementById('nome-logado').textContent=nome;
+  document.getElementById('inp-dupla-edit').value=duplaAtual||'';
+  document.getElementById('alerta-edicao').classList.remove('show');
+  document.getElementById('card-editar').style.display='block';
+  document.getElementById('card-editar').scrollIntoView({behavior:'smooth'});
+}
+function fecharEdicao(){document.getElementById('card-editar').style.display='none';nomeEditando='';}
+function removerDupla(){document.getElementById('inp-dupla-edit').value='';salvarEdicao();}
+function salvarEdicao(){
+  const novaDupla=document.getElementById('inp-dupla-edit').value.trim();
+  const alerta=document.getElementById('alerta-edicao');
+  callAPI('atualizarDupla',{nome:nomeEditando,dupla:novaDupla})
+    .then(res=>{
+      if(res.ok){invalidarCache('getPresentesHoje');mostrarAlerta(alerta,'success',res.mensagem);setTimeout(()=>{fecharEdicao();carregarPresentes();},1500);}
+      else mostrarAlerta(alerta,'error',res.erro);
+    })
+    .catch(()=>mostrarAlerta(alerta,'error','Erro de conexão.'));
+}
+
+// ── Lista presentes ────────────────────────────────────────────
+function carregarPresentes(){
+  callAPICached('getPresentesHoje',null,15000).then(presentes=>{
+    presentes=presentes||[];
+    presentesCompleto=presentes;
+    // nomesPresentesHoje deriva da mesma resposta — sem request extra
+    nomesPresentesHoje=presentes.filter(p=>!p.naoDebate).map(p=>p.nome);
+    const lista=document.getElementById('lista-presentes-pub');
+    document.getElementById('count-presentes').textContent=presentes.length;
+    if(!presentes.length){lista.innerHTML='<div class="empty-state"><div class="emoji">🪑</div><div class="txt">Ninguém registrou presença ainda.</div><div style="font-size:12px;margin-top:4px">Seja o primeiro a confirmar!</div></div>';return;}
+    lista.innerHTML=presentes.map((p,i)=>{
+      const ini=p.nome.split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase();
+      const isObs=p.naoDebate||p.tipo==='observador';
+      const dc=p.dupla&&!isObs?'color:var(--bordo-mid)':'color:#ccc';
+      const dtObs='<span style="background:#eee;color:#999;font-size:10px;padding:2px 8px;border-radius:10px">só assistindo</span>';
+      const dt=isObs?dtObs:(p.dupla?'↔ '+p.dupla:'sem dupla');
+      const editBtn=isObs?'':'<button class="btn-edit-small" onclick="abrirEdicao(\''+esc(p.nome)+'\',\''+esc(p.dupla||'')+'\')">editar</button>';
+      return '<div class="presente-item" style="animation-delay:'+(i*.04)+'s">'
+        +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<div class="avatar" style="'+(isObs?'opacity:.45':'')+'">'+ini+'</div>'
+        +'<div><div class="presente-nome" style="'+(isObs?'color:var(--muted)':'')+'">'+p.nome+'</div>'
+        +'<div class="presente-dupla" style="'+dc+'">'+dt+'</div></div></div>'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<div class="presente-hora">'+p.hora+'</div>'
+        +editBtn+'</div></div>';
+    }).join('');
+    if(adminLogado) atualizarStatsAdmin(presentes);
+  }).catch(()=>{});
+}
+
+// ── Draw público (membros) ─────────────────────────────────────
+function carregarDrawPublico(){
+  callAPICached('getDrawHojePublico',null,30000).then(draw=>{
+    const cont=document.getElementById('draw-container');
+    if(draw) renderizarDrawPublico(draw,cont);
+    else cont.innerHTML=`<div style="text-align:center;padding:48px 20px;color:#bbb">
+      <div style="font-size:2.5rem;margin-bottom:12px">🎯</div>
+      <div style="font-size:14px;font-weight:600;color:var(--muted)">O draw ainda não foi publicado.</div>
+      <div style="font-size:12px;margin-top:6px">Aguarde o administrador publicar o draw.</div>
+    </div>`;
+  }).catch(()=>{});
+}
+
+function renderizarDrawPublico(draw,container){
+  let html='';
+  draw.salas.forEach(sala=>{
+    const juizPill = sala.juiz ? `<span class="sala-juiz-pill">⚖️ ${sala.juiz}</span>` : '';
+    html+=`<div class="sala-card">
+      <div class="sala-header">
+        <span>Sala ${sala.numero}${sala.incompleta?' ★':''}</span>
+        <div style="display:flex;gap:6px;align-items:center">${juizPill}<span class="sala-badge">${sala.posicoes.length*2} pessoas</span></div>
+      </div>`;
+    sala.posicoes.forEach(pos=>{
+      const p2=(pos.p2==='—'||pos.p2==='— (sem par)')?null:pos.p2;
+      html+=`<div class="posicao-row">
+        <div class="posicao-badge pos-${pos.posicao}">${pos.posicao}</div>
+        <div class="debatedor">${pos.p1}</div>
+        <div class="debatedor-2">${p2||'<span style="color:#ddd">—</span>'}</div>
+        <div class="conf-badge">${pos.confirmado?'↔':'—'}</div>
+      </div>`;
+    });
+    html+='</div>';
+  });
+  if(draw.juizes?.length){
+    html+='<div class="juiz-section"><h3>Juízes gerais</h3>';
+    draw.juizes.forEach(j=>{html+=`<div class="juiz-nome">${j}</div>`;});
+    html+='</div>';
+  }
+  container.innerHTML=html||'<div style="text-align:center;padding:40px;color:#bbb">Nenhum dado encontrado.</div>';
+}
+
+// ── Duplas admin ────────────────────────────────────────────────
+function _daKey(){return 'duplasAdmin_'+new Date().toLocaleDateString('pt-BR');}
+function salvarDuplasAdmin(){try{localStorage.setItem(_daKey(),JSON.stringify(duplasAdmin));}catch(e){}}
+function carregarDuplasAdmin(){try{const s=localStorage.getItem(_daKey());if(s){duplasAdmin=JSON.parse(s);renderizarDuplasAdmin();}}catch(e){}}
+function adicionarDuplaAdmin(){
+  const p1=document.getElementById('inp-da-p1').value.trim();
+  const p2=document.getElementById('inp-da-p2').value.trim();
+  const alerta=document.getElementById('alerta-admin');
+  if(!p1||!p2){mostrarAlerta(alerta,'error','Preencha os dois nomes para adicionar um par.');return;}
+  if(norm(p1)===norm(p2)){mostrarAlerta(alerta,'error','Os dois nomes precisam ser diferentes.');return;}
+  if(duplasAdmin.some(d=>norm(d.p1)===norm(p1)||norm(d.p2)===norm(p1)||norm(d.p1)===norm(p2)||norm(d.p2)===norm(p2))){
+    mostrarAlerta(alerta,'error','Uma dessas pessoas já está em outro par manual.');return;
+  }
+  const avisos=[];
+  const pr1=presentesCompleto.find(p=>norm(p.nome)===norm(p1));
+  const pr2=presentesCompleto.find(p=>norm(p.nome)===norm(p2));
+  if(pr1&&pr1.dupla) avisos.push(p1+' já tem dupla preenchida: '+pr1.dupla);
+  if(pr2&&pr2.dupla) avisos.push(p2+' já tem dupla preenchida: '+pr2.dupla);
+  if(avisos.length>0){
+    if(!confirm('⚠️ Conflito de dupla:\n\n• '+avisos.join('\n• ')+'\n\nDeseja forçar este par mesmo assim? A alocação manual vai sobrescrever a dupla preenchida.')) return;
+  }
+  duplasAdmin.push({p1,p2});
+  document.getElementById('inp-da-p1').value='';
+  document.getElementById('inp-da-p2').value='';
+  salvarDuplasAdmin();
+  renderizarDuplasAdmin();
+  alerta.classList.remove('show');
+}
+function removerDuplaAdmin(i){duplasAdmin.splice(i,1);salvarDuplasAdmin();renderizarDuplasAdmin();}
+function renderizarDuplasAdmin(){
+  const cont=document.getElementById('duplas-admin-lista');
+  if(!duplasAdmin.length){cont.innerHTML='';return;}
+  cont.innerHTML=duplasAdmin.map((d,i)=>`
+    <div class="dupla-admin-item" style="animation-delay:${i*.05}s">
+      <div style="flex:1;font-size:13px;font-weight:600;color:var(--text)">${d.p1}</div>
+      <div class="dupla-admin-arrow">↔</div>
+      <div style="flex:1;font-size:13px;font-weight:600;color:var(--text)">${d.p2}</div>
+      <button class="dupla-admin-remove" onclick="removerDuplaAdmin(${i})">✕</button>
+    </div>`).join('');
+}
+
+// ── Juízes gerais ──────────────────────────────────────────────
+function adicionarJuiz(){
+  const inp=document.getElementById('inp-juiz');
+  const nome=inp.value.trim();
+  if(!nome||juizesEscolhidos.includes(nome)){inp.value='';return;}
+  juizesEscolhidos.push(nome);
+  if(drawAtual) drawAtual.juizes=[...juizesEscolhidos];
+  renderizarJuizes();inp.value='';
+}
+function removerJuiz(nome){
+  juizesEscolhidos=juizesEscolhidos.filter(j=>j!==nome);
+  if(drawAtual) drawAtual.juizes=[...juizesEscolhidos];
+  renderizarJuizes();
+}
+function renderizarJuizes(){
+  document.getElementById('juizes-container').innerHTML=juizesEscolhidos.map(j=>
+    `<span class="juiz-tag">${j} <button onclick="removerJuiz('${esc(j)}')">×</button></span>`
+  ).join('');
+}
+
+// ── Admin: gerar draw ──────────────────────────────────────────
+function gerarDraw(){
+  const btn=document.getElementById('btn-gerar');
+  const alerta=document.getElementById('alerta-draw-admin');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Gerando...';
+  mostrarAlerta(alerta,'info','Gerando draw, aguarde...');
+  callAPI('gerarDrawWeb',{juizes:juizesEscolhidos,duplasAdmin:duplasAdmin})
+    .then(res=>{
+      btn.disabled=false;btn.textContent='Gerar draw';
+      if(res.ok){
+        drawAtual={salas:res.salas,juizes:res.juizes,publicado:false};
+        mostrarAlerta(alerta,'success',`Rascunho gerado! ${res.total} pessoas em ${res.salas.length} sala(s). Revise abaixo antes de publicar.`);
+        document.getElementById('btn-regerar').style.display='';
+        document.getElementById('btn-publicar').style.display='';
+        document.getElementById('admin-draw-preview').style.display='block';
+        renderizarDrawAdmin(drawAtual);
+        document.getElementById('admin-draw-preview').scrollIntoView({behavior:'smooth'});
+      } else mostrarAlerta(alerta,'error',res.erro);
+    })
+    .catch(err=>{
+      btn.disabled=false;btn.textContent='Gerar draw';
+      mostrarAlerta(alerta,'error','Erro: '+err.message);
+    });
+}
+
+function regerarDraw(){
+  if(!confirm('Isso vai substituir o rascunho atual. Confirmar?')) return;
+  gerarDraw();
+}
+
+// ── Publicar draw ──────────────────────────────────────────────
+function publicarDraw(){
+  if(!confirm('Publicar o draw? Todos os membros poderão ver.')) return;
+  const alerta=document.getElementById('alerta-draw-admin');
+  const alerta2=document.getElementById('alerta-draw-salvo');
+  const jps=coletarJuizesPorSala();
+  callAPI('salvarDrawEditado',{salas:drawAtual?.salas||[],juizesPorSala:jps,juizes:drawAtual?.juizes||[]})
+    .then(resSalvar=>{
+      if(!resSalvar.ok){ mostrarAlerta(alerta,'error',resSalvar.erro); return; }
+      return callAPI('publicarDraw').then(resPub=>{
+        if(resPub.ok){
+          mostrarAlerta(alerta,'success','Draw publicado! Os membros já podem ver na aba Draw.');
+          mostrarAlerta(alerta2,'success','Publicado com sucesso!');
+          if(drawAtual) drawAtual.publicado=true;
+          invalidarCache('getDrawHojePublico');
+          document.getElementById('btn-publicar').disabled=true;
+          document.getElementById('btn-publicar').textContent='✓ Publicado';
+          document.getElementById('btn-publicar-2').disabled=true;
+          document.getElementById('btn-publicar-2').textContent='✓ Publicado';
+          carregarDrawPublico();
+        } else mostrarAlerta(alerta,'error',resPub.erro);
+      });
+    })
+    .catch(err=>mostrarAlerta(alerta,'error','Erro: '+err.message));
+}
+
+// ── Trocar pessoas: tocar-para-selecionar, tocar-para-trocar ────
+// (substitui drag & drop, que não funciona em celular e trava o scroll)
+let slotSelecionado = null; // { si, pi, slot }
+
+function renderizarDrawAdmin(draw){
+  const cont=document.getElementById('admin-draw-container');
+  cont.innerHTML='';
+  draw.salas.forEach((sala,si)=>{
+    const card=document.createElement('div');
+    card.className='sala-card';
+    card.style.animationDelay=si*.05+'s';
+
+    const hdr=document.createElement('div');
+    hdr.className='sala-header';
+    hdr.innerHTML=`<span>Sala ${sala.numero}${sala.incompleta?' ★':''}</span><span class="sala-badge">${sala.posicoes.length*2} pessoas</span>`;
+    card.appendChild(hdr);
+
+    sala.posicoes.forEach((pos,pi)=>{
+      card.appendChild(buildPosRow(pos,si,pi));
+    });
+
+    const juizRow=document.createElement('div');
+    juizRow.className='sala-juiz-row';
+    juizRow.innerHTML=`
+      <span class="sala-juiz-label">⚖️ Juiz</span>
+      <input class="sala-juiz-input" type="text" placeholder="Nome do juiz desta sala (opcional)"
+        value="${sala.juiz||''}"
+        data-sala="${sala.numero}"
+        oninput="atualizarJuizSala(this)">`;
+    card.appendChild(juizRow);
+    cont.appendChild(card);
+  });
+}
+
+function buildPosRow(pos,si,pi){
+  const row=document.createElement('div');
+  row.className='posicao-row';
+  const p2=(pos.p2==='—'||pos.p2==='— (sem par)')?null:pos.p2;
+  const sel=slotSelecionado;
+  const selP1 = sel && sel.si===si && sel.pi===pi && sel.slot==='p1';
+  const selP2 = sel && sel.si===si && sel.pi===pi && sel.slot==='p2';
+  const base='cursor:pointer;padding:6px 8px;border-radius:5px;transition:background .15s,box-shadow .15s';
+  const marca='background:var(--bordo-light);box-shadow:0 0 0 2px var(--bordo-mid) inset';
+  row.innerHTML=`
+    <div class="posicao-badge pos-${pos.posicao}">${pos.posicao}</div>
+    <div class="debatedor" onclick="selecionarSlot(${si},${pi},'p1')"
+      title="Toque para selecionar e trocar"
+      style="${base}${selP1?';'+marca:''}">${pos.p1}</div>
+    <div class="debatedor-2" onclick="selecionarSlot(${si},${pi},'p2')"
+      title="Toque para selecionar e trocar"
+      style="${base}${selP2?';'+marca:''}">${p2||'<span style="color:#ddd">—</span>'}</div>
+    <div class="conf-badge">${pos.confirmado?'↔':'—'}</div>`;
+  return row;
+}
+
+// 1º toque seleciona; 2º toque troca; tocar no mesmo deseleciona.
+function selecionarSlot(si,pi,slot){
+  const s=slotSelecionado;
+  if(s && s.si===si && s.pi===pi && s.slot===slot){
+    slotSelecionado=null; renderizarDrawAdmin(drawAtual); return;
+  }
+  if(!s){
+    slotSelecionado={si,pi,slot}; renderizarDrawAdmin(drawAtual); return;
+  }
+  const src=drawAtual.salas[s.si].posicoes[s.pi];
+  const dst=drawAtual.salas[si].posicoes[pi];
+  const valSrc=s.slot==='p1'?src.p1:src.p2;
+  const valDst=slot==='p1'?dst.p1:dst.p2;
+  if(s.slot==='p1') src.p1=valDst; else src.p2=valDst;
+  if(slot==='p1') dst.p1=valSrc; else dst.p2=valSrc;
+  slotSelecionado=null;
+  renderizarDrawAdmin(drawAtual);
+}
+
+function atualizarJuizSala(input){
+  const numSala=parseInt(input.dataset.sala);
+  const sala=drawAtual?.salas.find(s=>s.numero===numSala);
+  if(sala) sala.juiz=input.value;
+}
+
+function coletarJuizesPorSala(){
+  const jps={};
+  document.querySelectorAll('.sala-juiz-input').forEach(inp=>{
+    const n=parseInt(inp.dataset.sala);
+    if(inp.value.trim()) jps[n]=inp.value.trim();
+  });
+  return jps;
+}
+
+function salvarEdicaoDraw(){
+  const jps=coletarJuizesPorSala();
+  if(drawAtual) drawAtual.salas.forEach(s=>{ if(jps[s.numero]) s.juiz=jps[s.numero]; });
+  const alerta=document.getElementById('alerta-draw-salvo');
+  callAPI('salvarDrawEditado',{salas:drawAtual?.salas||[],juizesPorSala:jps,juizes:drawAtual?.juizes||[]})
+    .then(res=>{
+      if(res.ok){
+        const msg=drawAtual?.publicado?'Alterações salvas e draw atualizado para membros.':'Alterações salvas! Ainda não publicado.';
+        mostrarAlerta(alerta,'success',msg);
+      } else mostrarAlerta(alerta,'error',res.erro);
+    })
+    .catch(err=>mostrarAlerta(alerta,'error','Erro: '+err.message));
+}
+
+// ── Admin: login, stats e lista ────────────────────────────────
+function verificarSenha(){
+  const alerta=document.getElementById('alerta-admin-login');
+  callAPI('verificarSenha',{senha:document.getElementById('inp-senha').value}).then(ok=>{
+    if(ok){
+      adminLogado=true;
+      document.getElementById('admin-locked').style.display='none';
+      document.getElementById('admin-painel').style.display='block';
+      carregarDuplasAdmin();
+      atualizarStatsAdmin();carregarListaAdmin();
+      callAPI('getDrawHoje').then(draw=>{
+        if(draw){
+          drawAtual=draw;
+          if(draw.juizes&&draw.juizes.length){juizesEscolhidos=[...draw.juizes];renderizarJuizes();}
+          document.getElementById('btn-regerar').style.display='';
+          document.getElementById('btn-publicar').style.display='';
+          document.getElementById('admin-draw-preview').style.display='block';
+          renderizarDrawAdmin(draw);
+          if(draw.publicado){
+            const banner=document.querySelector('#admin-draw-preview .rascunho-banner');
+            if(banner){
+              banner.style.background='var(--bordo-light)';
+              banner.style.borderColor='rgba(107,26,42,.3)';
+              banner.querySelector('.rascunho-text').textContent='✅ Draw publicado — membros já podem ver.';
+              banner.querySelector('.rascunho-sub').textContent='Edite e salve para atualizar o draw publicado.';
+            }
+            document.getElementById('btn-publicar').disabled=true;
+            document.getElementById('btn-publicar').textContent='✓ Publicado';
+            document.getElementById('btn-publicar-2').disabled=true;
+            document.getElementById('btn-publicar-2').textContent='✓ Publicado';
+          }
+        }
+      }).catch(()=>{});
+    } else mostrarAlerta(alerta,'error','Senha incorreta.');
+  }).catch(()=>mostrarAlerta(alerta,'error','Erro de conexão.'));
+}
+
+function atualizarStatsAdmin(presentes){
+  if(presentes){
+    const t=presentes.length;
+    document.getElementById('stat-total').textContent=t;
+    document.getElementById('stat-salas').textContent=Math.floor(t/8);
+    document.getElementById('stat-resto').textContent=t%8;
+  } else callAPICached('getPresentesHoje',null,15000).then(p=>atualizarStatsAdmin(p||[])).catch(()=>{});
+}
+
+function carregarListaAdmin(){
+  callAPICached('getPresentesHoje',null,15000).then(presentes=>{
+    presentes=presentes||[];
+    const div=document.getElementById('admin-lista-presentes');
+    if(!presentes.length){div.innerHTML='<div style="color:#bbb">Ninguém presente ainda.</div>';return;}
+    div.innerHTML=presentes.map((p,i)=>{
+      const ini=p.nome.split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase();
+      const isObs=p.naoDebate||p.tipo==='observador';
+      const dc2=p.dupla&&!isObs?'color:var(--bordo-mid)':'color:#ccc';
+      const dtObs2='<span style="background:#eee;color:#999;font-size:10px;padding:2px 8px;border-radius:10px">só assistindo</span>';
+      const dt2=isObs?dtObs2:(p.dupla?'↔ '+p.dupla:'sem dupla');
+      return '<div class="presente-item" style="animation-delay:'+(i*.04)+'s">'
+        +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<div class="avatar" style="'+(isObs?'opacity:.45':'')+'">'+ini+'</div>'
+        +'<div><div class="presente-nome" style="'+(isObs?'color:var(--muted)':'')+'">'+(i+1)+'. '+p.nome+'</div>'
+        +'<div class="presente-dupla" style="'+dc2+'">'+dt2+'</div></div></div>'
+        +'<div style="display:flex;align-items:center;gap:6px">'
+        +'<div class="presente-hora">'+p.hora+'</div>'
+        +'<button class="btn-del-small" onclick="apagarPresencaAdmin(\''+esc(p.nome)+'\')">remover</button>'
+        +'</div></div>';
+    }).join('');
+  }).catch(()=>{});
+}
+
+function apagarPresencaAdmin(nome){
+  if(!confirm('Remover presença de '+nome+'?')) return;
+  const alerta=document.getElementById('alerta-admin');
+  callAPI('apagarPresenca',{nome})
+    .then(res=>{
+      if(res.ok){invalidarCache('getPresentesHoje');mostrarAlerta(alerta,'success',res.mensagem);carregarListaAdmin();carregarPresentes();atualizarStatsAdmin();}
+      else mostrarAlerta(alerta,'error',res.erro);
+    })
+    .catch(err=>mostrarAlerta(alerta,'error','Erro: '+err.message));
+}
+
+// ── Histórico ──────────────────────────────────────────────────
+function carregarHistorico(){
+  callAPI('getDrawsAnteriores').then(draws=>{
+    draws=draws||[];
+    const div=document.getElementById('historico-lista');
+    if(!draws.length){div.innerHTML='<div style="color:#bbb;font-size:13px">Nenhum draw encontrado.</div>';return;}
+    div.innerHTML=draws.map((d,i)=>
+      `<div class="historico-item" style="animation-delay:${i*.05}s" onclick="verDrawHistorico('${d}')">
+        <span class="hist-date">${d.replace('Draw ','')}</span>
+        <span class="hist-arrow">→</span>
+      </div>`
+    ).join('');
+  }).catch(()=>{});
+}
+
+function verDrawHistorico(nomeAba){
+  const div=document.getElementById('historico-draw-detail');
+  div.innerHTML='<div style="text-align:center;padding:20px;color:#bbb;font-size:13px">Carregando...</div>';
+  callAPI('getDrawData',{nomeAba}).then(dados=>{
+    if(!dados){div.innerHTML='';return;}
+    const draw=parsearDraw(dados);
+    const card=document.createElement('div');
+    card.className='card';
+    card.innerHTML=`<div class="sec-label">${nomeAba}</div>`;
+    renderizarDrawPublico(draw,card);
+    div.innerHTML='';div.appendChild(card);
+  }).catch(()=>{div.innerHTML='';});
+}
+
+function parsearDraw(dados){
+  const salas=[];let salaAtual=null;const juizes=[];
+  for(let i=2;i<dados.length;i++){
+    const row=dados[i];if(!row[0]) continue;
+    if(String(row[0]).startsWith('⚖️')){String(row[1]).split(',').forEach(j=>{if(j.trim())juizes.push(j.trim());});continue;}
+    const num=parseInt(String(row[0]).replace(/\D/g,''));if(!num) continue;
+    if(!salaAtual||salaAtual.numero!==num){if(salaAtual)salas.push(salaAtual);salaAtual={numero:num,posicoes:[],incompleta:String(row[0]).includes('★'),juiz:''};}
+    if(!salaAtual.juiz&&row[5]) salaAtual.juiz=String(row[5]).trim();
+    salaAtual.posicoes.push({posicao:row[1],p1:row[2],p2:row[3],confirmado:String(row[4]).includes('✅')});
+  }
+  if(salaAtual)salas.push(salaAtual);
+  return{salas,juizes};
+}
+
+// ── Util ───────────────────────────────────────────────────────
+function esc(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+</script>
+</body>
+</html>
