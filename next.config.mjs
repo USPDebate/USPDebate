@@ -3,7 +3,7 @@
 // ⚠️ AJUSTE: nome EXATO do repositório no GitHub.
 // Site fica em https://gzimmerdev.github.io/<REPO>/  → basePath precisa ser "/<REPO>".
 // Se o repositório for "gzimmerdev.github.io" (site raiz), deixe REPO = "".
-const REPO = 'USPDebatesSite';
+const REPO = 'USPDebate';
 
 const isProd = process.env.NODE_ENV === 'production';
 const base = isProd && REPO ? `/${REPO}` : '';
