@@ -47,9 +47,9 @@ export default function HistoricoTab() {
                 key={nome}
                 onClick={() => abrir(nome)}
                 style={{ animationDelay: i * 0.04 + 's' }}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-lg
+                className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl
                   bg-surface-2 border border-border text-left transition animate-fade-up
-                  hover:border-bordo/60"
+                  hover:border-bordo/60 hover:-translate-y-0.5"
               >
                 <span className="text-[13px] font-semibold">{nome.replace('Draw ', '')}</span>
                 <span className="text-muted text-sm">›</span>

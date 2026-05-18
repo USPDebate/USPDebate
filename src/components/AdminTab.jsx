@@ -203,8 +203,11 @@ export default function AdminTab() {
       <Card style={{ animationDelay: '.05s' }}>
         <SectionLabel icon={IconUsers}>Estatísticas de hoje</SectionLabel>
         <div className="grid grid-cols-3 gap-2">
-          {[['Presentes', total], ['Salas de 8', numSalas], ['Sobram', resto]].map(([lbl, val]) => (
-            <div key={lbl} className="bg-surface-2 border border-border rounded-xl p-3 text-center">
+          {[['Presentes', total], ['Salas de 8', numSalas], ['Sobram', resto]].map(([lbl, val], i) => (
+            <div key={lbl}
+              style={{ animationDelay: i * 0.06 + 's' }}
+              className="bg-surface-2 border border-border rounded-xl p-3 text-center
+                animate-rise transition-colors hover:border-bordo/40">
               <div className="font-display text-2xl text-bordo">{val}</div>
               <div className="text-[9px] uppercase tracking-widest text-muted mt-1">{lbl}</div>
             </div>
@@ -219,7 +222,10 @@ export default function AdminTab() {
         {duplasAdmin.length > 0 && (
           <div className="space-y-1.5 mb-3">
             {duplasAdmin.map((d, i) => (
-              <div key={i} className="flex items-center gap-2 bg-surface-2 border border-border rounded-lg px-3 py-2">
+              <div key={i}
+                style={{ animationDelay: i * 0.04 + 's' }}
+                className="flex items-center gap-2 bg-surface-2 border border-border rounded-lg
+                  px-3 py-2 animate-fade-up">
                 <span className="flex-1 text-[13px] font-semibold">{d.p1}</span>
                 <span className="text-muted text-xs">↔</span>
                 <span className="flex-1 text-[13px] font-semibold">{d.p2}</span>
@@ -307,7 +313,9 @@ export default function AdminTab() {
               const obs = p.naoDebate || p.tipo === 'observador';
               return (
                 <div key={p.nome + i}
-                  className="flex items-center justify-between p-3 rounded-xl border border-border bg-surface-2">
+                  style={{ animationDelay: i * 0.04 + 's' }}
+                  className="flex items-center justify-between p-3 rounded-xl border border-border
+                    bg-surface-2 animate-fade-up transition hover:-translate-y-0.5 hover:border-bordo/50">
                   <div>
                     <div className={`text-[13px] font-semibold ${obs ? 'text-muted' : 'text-text'}`}>
                       {i + 1}. {p.nome}

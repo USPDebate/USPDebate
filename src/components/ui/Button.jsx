@@ -1,9 +1,9 @@
 const VARIANTS = {
-  primary: 'bg-bordo text-white hover:brightness-110',
+  primary: 'bg-gradient-to-br from-bordo to-bordo-soft text-white hover:brightness-110 shadow-lg shadow-bordo/25',
   outline: 'bg-transparent border border-bordo text-bordo hover:bg-bordo/10',
   ghost:   'bg-surface-2 text-text border border-border hover:border-bordo/60',
   danger:  'bg-danger text-white hover:brightness-110',
-  success: 'bg-success text-white hover:brightness-110',
+  success: 'bg-gradient-to-br from-success to-[#245f3e] text-white hover:brightness-110 shadow-lg shadow-success/20',
 };
 
 export default function Button({ children, variant = 'primary', className = '', loading = false, ...props }) {

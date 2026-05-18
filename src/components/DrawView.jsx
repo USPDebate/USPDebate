@@ -8,9 +8,11 @@ export default function DrawView({ draw }) {
 
   return (
     <div className="space-y-3">
-      {draw.salas.map((sala) => (
+      {draw.salas.map((sala, idx) => (
         <div key={sala.numero}
-          className="border border-border rounded-xl2 overflow-hidden bg-surface-2 animate-fade-up">
+          style={{ animationDelay: idx * 0.06 + 's' }}
+          className="border border-border rounded-xl2 overflow-hidden bg-surface-2 animate-rise
+            transition-colors hover:border-bordo/40">
           <div className="flex items-center justify-between gap-2 px-4 py-3 bg-[#120c0e]
             text-[11px] uppercase tracking-wider">
             <span className="font-semibold">
@@ -34,7 +36,7 @@ export default function DrawView({ draw }) {
             return (
               <div key={i}
                 className="grid grid-cols-[54px_1fr_1fr] gap-2 px-4 py-2.5 items-center
-                  text-[13px] border-t border-border">
+                  text-[13px] border-t border-border transition-colors hover:bg-bordo/5">
                 <span className={`text-[10px] font-bold text-center py-1 rounded border
                   ${POS_STYLE[pos.posicao] || 'bg-surface text-muted border-border'}`}>
                   {pos.posicao}
