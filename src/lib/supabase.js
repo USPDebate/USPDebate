@@ -395,12 +395,12 @@ export async function resetarTrainees() {
   return { ok: true };
 }
 
-// Uma semana = uma data de treino. Numeração é derivada da ordem no front.
-export async function criarSemana({ data }) {
+// Uma semana = um período (seg–dom). Numeração é derivada da ordem no front.
+export async function criarSemana({ inicio, fim }) {
   const temp = await temporadaAtiva();
   if (!temp) return { ok: false, erro: 'Nenhuma temporada ativa.' };
   const { error } = await sb.from('trainee_semanas')
-    .insert({ temporada_id: temp.id, nome: '', data_inicio: data, data_fim: data });
+    .insert({ temporada_id: temp.id, nome: '', data_inicio: inicio, data_fim: fim });
   if (error) return { ok: false, erro: error.message };
   return { ok: true };
 }

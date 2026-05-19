@@ -30,6 +30,22 @@ function fmtCurto(iso) {
   return `${d}/${m}`;
 }
 
+function isoDe(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
+
+// Segunda a domingo da semana que contém a data ISO.
+function semanaDe(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  const dow = (d.getDay() + 6) % 7; // 0 = segunda
+  const ini = new Date(d); ini.setDate(d.getDate() - dow);
+  const fim = new Date(ini); fim.setDate(ini.getDate() + 6);
+  return { inicio: isoDe(ini), fim: isoDe(fim) };
+}
+
 export default function TraineesArea({ senha }) {
   const [trainees, setTrainees] = useState([]);
   const [semanas, setSemanas] = useState([]);
@@ -73,8 +89,8 @@ export default function TraineesArea({ senha }) {
     if (res.ok) { toast('success', 'Trainees resetados.'); recarregar(); }
     else setAlerta({ tipo: 'error', msg: res.erro });
   }
-  async function addSemana(data) {
-    const res = await criarSemana({ data });
+  async function addSemana(w) {
+    const res = await criarSemana({ inicio: w.inicio, fim: w.fim });
     if (res.ok) recarregar(); else setAlerta({ tipo: 'error', msg: res.erro });
   }
   async function removerSemana(id) {
@@ -94,13 +110,19 @@ export default function TraineesArea({ senha }) {
   async function togglePresenca(pessoaId, sem) {
     const presente = !presenteNa(pessoaId, sem);
     const anterior = presencas;
+    let data;
     if (presente) {
-      setPresencas((cur) => [...cur, { pessoa_id: pessoaId, data: sem.data_inicio }]);
+      data = datasPresenca.find((d) => d >= sem.data_inicio && d <= sem.data_fim)
+        || sem.data_inicio;
+      setPresencas((cur) => [...cur, { pessoa_id: pessoaId, data }]);
     } else {
+      const reg = presencas.find((p) => p.pessoa_id === pessoaId
+        && p.data >= sem.data_inicio && p.data <= sem.data_fim);
+      data = reg ? reg.data : sem.data_inicio;
       setPresencas((cur) => cur.filter(
-        (p) => !(p.pessoa_id === pessoaId && p.data === sem.data_inicio)));
+        (p) => !(p.pessoa_id === pessoaId && p.data === data)));
     }
-    const res = await marcarPresenca({ pessoaId, data: sem.data_inicio, presente, senha });
+    const res = await marcarPresenca({ pessoaId, data, presente, senha });
     if (!res.ok) {
       setPresencas(anterior);
       toast('error', res.erro || 'Não foi possível salvar a presença.');
@@ -108,7 +130,8 @@ export default function TraineesArea({ senha }) {
   }
 
   function presenteNa(pessoaId, sem) {
-    return presencas.some((p) => p.pessoa_id === pessoaId && p.data === sem.data_inicio);
+    return presencas.some((p) => p.pessoa_id === pessoaId
+      && p.data >= sem.data_inicio && p.data <= sem.data_fim);
   }
   function metricasDe(pid) {
     const treinos = semanas.filter((s) => presenteNa(pid, s)).length;
@@ -117,10 +140,16 @@ export default function TraineesArea({ senha }) {
     return { treinos, forms, rodadas: st.rodadas, media: st.mediaCrua, nivel: st.nivel };
   }
 
-  // semanas disponíveis para adicionar = datas de treino ainda não usadas
-  const datasDisponiveis = datasPresenca.filter(
-    (d) => !semanas.some((s) => s.data_inicio === d)
-  );
+  // semanas (seg–dom) que já têm treino registrado e ainda não foram criadas
+  const semanasCriadas = new Set(semanas.map((s) => s.data_inicio));
+  const semanasDisponiveis = [];
+  const vistas = new Set();
+  datasPresenca.forEach((d) => {
+    const w = semanaDe(d);
+    if (vistas.has(w.inicio)) return;
+    vistas.add(w.inicio);
+    if (!semanasCriadas.has(w.inicio)) semanasDisponiveis.push(w);
+  });
 
   // agrupa por mentor
   const grupos = {};
@@ -173,9 +202,10 @@ export default function TraineesArea({ senha }) {
       <Card style={{ animationDelay: '.09s' }}>
         <SectionLabel icon={IconClock}>Semanas do acompanhamento</SectionLabel>
         <p className="text-xs text-muted mb-3">
-          Uma <span className="text-text">semana</span> é uma data de treino que você quer
-          acompanhar na grade abaixo. Clique numa data de treino para adicioná-la — cada
-          uma vira uma coluna (Semana 1, 2, 3…), numerada automaticamente pela ordem.
+          Uma <span className="text-text">semana</span> é um período de segunda a domingo —
+          uma só por semana do calendário. Ela agrupa o treino e as tarefas daquele período:
+          a presença em qualquer treino da semana entra na coluna correspondente. A numeração
+          (Semana 1, 2, 3…) é automática pela ordem.
         </p>
         {semanas.length > 0 && (
           <div className="space-y-1.5 mb-3">
@@ -183,7 +213,9 @@ export default function TraineesArea({ senha }) {
               <div key={s.id}
                 className="flex items-center gap-2 bg-surface-2 border border-border rounded-lg px-3 py-2">
                 <span className="flex-1 text-[13px] font-semibold">Semana {i + 1}</span>
-                <span className="text-[11px] text-muted">treino de {fmtCurto(s.data_inicio)}</span>
+                <span className="text-[11px] text-muted">
+                  {fmtCurto(s.data_inicio)} a {fmtCurto(s.data_fim)}
+                </span>
                 <button onClick={() => removerSemana(s.id)} className="text-danger p-1">
                   <IconTrash className="w-4 h-4" />
                 </button>
@@ -192,15 +224,15 @@ export default function TraineesArea({ senha }) {
           </div>
         )}
         <div className="text-[10px] uppercase tracking-[0.15em] text-muted mb-1.5">
-          Adicionar semana — clique numa data de treino
+          Adicionar semana — escolha uma semana com treino registrado
         </div>
-        {datasDisponiveis.length > 0 ? (
+        {semanasDisponiveis.length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            {datasDisponiveis.map((d) => (
-              <button key={d} onClick={() => addSemana(d)}
+            {semanasDisponiveis.map((w) => (
+              <button key={w.inicio} onClick={() => addSemana(w)}
                 className="text-[12px] border border-border rounded-lg px-3 py-2 text-muted
                   hover:border-bordo hover:text-bordo transition">
-                + Treino de {fmtCurto(d)}
+                + Semana de {fmtCurto(w.inicio)} a {fmtCurto(w.fim)}
               </button>
             ))}
           </div>
@@ -208,7 +240,7 @@ export default function TraineesArea({ senha }) {
           <p className="text-[11px] text-muted">
             {datasPresenca.length === 0
               ? 'Registre presença em treinos para poder criar semanas.'
-              : 'Todas as datas de treino já viraram semanas.'}
+              : 'Todas as semanas com treino já foram criadas.'}
           </p>
         )}
       </Card>
