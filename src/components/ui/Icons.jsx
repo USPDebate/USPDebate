@@ -105,3 +105,12 @@ export function IconScale(props) {
     </svg>
   );
 }
+
+export function IconChart(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M3 3v18h18" />
+      <path d="m7 14 4-4 3 3 5-6" />
+    </svg>
+  );
+}

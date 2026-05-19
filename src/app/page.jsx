@@ -2,17 +2,24 @@
 import { useState, useEffect } from 'react';
 import PresencaTab from '@/components/PresencaTab';
 import DrawTab from '@/components/DrawTab';
+import SpeaksTab from '@/components/SpeaksTab';
+import DesempenhoTab from '@/components/DesempenhoTab';
 import HistoricoTab from '@/components/HistoricoTab';
 import AdminTab from '@/components/AdminTab';
 import Decor from '@/components/ui/Decor';
 import IntroSplash from '@/components/IntroSplash';
-import { IconCalendar } from '@/components/ui/Icons';
+import Toaster from '@/components/ui/Toaster';
+import {
+  IconCalendar, IconUsers, IconLayers, IconScale, IconChart, IconClock, IconLock,
+} from '@/components/ui/Icons';
 
 const ABAS = [
-  { id: 'presenca',  label: 'Presença' },
-  { id: 'draw',      label: 'Draw' },
-  { id: 'historico', label: 'Histórico' },
-  { id: 'admin',     label: 'Admin' },
+  { id: 'presenca',   label: 'Presença',   icon: IconUsers },
+  { id: 'draw',       label: 'Draw',       icon: IconLayers },
+  { id: 'speaks',     label: 'Speaks',     icon: IconScale },
+  { id: 'desempenho', label: 'Desempenho', icon: IconChart },
+  { id: 'historico',  label: 'Histórico',  icon: IconClock },
+  { id: 'admin',      label: 'Admin',      icon: IconLock },
 ];
 
 export default function Page() {
@@ -28,6 +35,7 @@ export default function Page() {
   return (
     <div className="relative min-h-screen pb-24">
       <IntroSplash />
+      <Toaster />
       <Decor />
 
       {/* Header */}
@@ -63,26 +71,33 @@ export default function Page() {
         ))}
       </nav>
 
-      {/* Conteúdo */}
-      <main className="relative z-10 max-w-[860px] mx-auto p-4 sm:p-5">
-        {aba === 'presenca'  && <PresencaTab />}
-        {aba === 'draw'      && <DrawTab />}
-        {aba === 'historico' && <HistoricoTab />}
-        {aba === 'admin'     && <AdminTab />}
+      {/* Conteúdo — largura total no desktop */}
+      <main className="relative z-10 w-full px-4 py-4 sm:px-8 sm:py-6">
+        {aba === 'presenca'   && <PresencaTab />}
+        {aba === 'draw'       && <DrawTab />}
+        {aba === 'speaks'     && <SpeaksTab />}
+        {aba === 'desempenho' && <DesempenhoTab />}
+        {aba === 'historico'  && <HistoricoTab />}
+        {aba === 'admin'      && <AdminTab />}
       </main>
 
-      {/* Nav inferior (mobile) */}
+      {/* Nav inferior (mobile) — ícone + rótulo */}
       <nav className="sm:hidden fixed bottom-0 inset-x-0 bg-surface border-t border-border flex z-50">
-        {ABAS.map((a) => (
-          <button
-            key={a.id}
-            onClick={() => setAba(a.id)}
-            className={`flex-1 py-3 text-[10px] font-semibold uppercase tracking-wide transition
-              ${aba === a.id ? 'text-bordo' : 'text-muted'}`}
-          >
-            {a.label}
-          </button>
-        ))}
+        {ABAS.map((a) => {
+          const Ic = a.icon;
+          const ativo = aba === a.id;
+          return (
+            <button
+              key={a.id}
+              onClick={() => setAba(a.id)}
+              className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition
+                ${ativo ? 'text-bordo' : 'text-muted'}`}
+            >
+              <Ic className="w-5 h-5" />
+              <span className="text-[8px] font-semibold uppercase tracking-wide">{a.label}</span>
+            </button>
+          );
+        })}
       </nav>
     </div>
   );

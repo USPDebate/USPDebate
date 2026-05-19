@@ -75,7 +75,7 @@ function montarDraw(pares, numSalas) {
   let idx = 0;
 
   for (let s = 0; s < numSalas; s++) {
-    const sala = { numero: s + 1, posicoes: [], incompleta: false, juiz: '' };
+    const sala = { numero: s + 1, posicoes: [], incompleta: false, juizes: [] };
     const pos = embaralhar([...POSICOES_BP]);
     for (let p = 0; p < 4; p++) {
       if (idx < completos.length) {
@@ -92,7 +92,7 @@ function montarDraw(pares, numSalas) {
   }
 
   if (idx < completos.length || impar) {
-    const sala = { numero: numSalas + 1, posicoes: [], incompleta: true, juiz: '' };
+    const sala = { numero: numSalas + 1, posicoes: [], incompleta: true, juizes: [] };
     let p = 0;
     while (idx < completos.length) {
       sala.posicoes.push({
@@ -111,6 +111,11 @@ function montarDraw(pares, numSalas) {
     }
     salas.push(sala);
   }
+  // ordena as posições de cada sala: OG → OO → CG → CO
+  const ordem = { OG: 0, OO: 1, CG: 2, CO: 3 };
+  salas.forEach((s) =>
+    s.posicoes.sort((a, b) => (ordem[a.posicao] ?? 99) - (ordem[b.posicao] ?? 99))
+  );
   return salas;
 }
 

@@ -6,13 +6,29 @@ const VARIANTS = {
   success: 'bg-gradient-to-br from-success to-[#245f3e] text-white hover:brightness-110 shadow-lg shadow-success/20',
 };
 
-export default function Button({ children, variant = 'primary', className = '', loading = false, ...props }) {
+export default function Button({ children, variant = 'primary', className = '', loading = false, onClick, ...props }) {
+  function handleClick(e) {
+    // efeito ripple a partir do ponto do toque
+    const btn = e.currentTarget;
+    const d = Math.max(btn.clientWidth, btn.clientHeight);
+    const rect = btn.getBoundingClientRect();
+    const circle = document.createElement('span');
+    circle.className = 'ripple';
+    circle.style.width = circle.style.height = d + 'px';
+    circle.style.left = (e.clientX - rect.left - d / 2) + 'px';
+    circle.style.top = (e.clientY - rect.top - d / 2) + 'px';
+    btn.appendChild(circle);
+    setTimeout(() => circle.remove(), 600);
+    if (onClick) onClick(e);
+  }
+
   return (
     <button
       {...props}
+      onClick={handleClick}
       disabled={props.disabled || loading}
-      className={`relative w-full rounded-xl px-4 py-3.5 text-[11px] font-semibold uppercase
-        tracking-[0.13em] transition active:scale-[0.99]
+      className={`relative overflow-hidden w-full rounded-xl px-4 py-3.5 text-[11px] font-semibold
+        tracking-[0.13em] uppercase transition active:scale-[0.99]
         disabled:opacity-50 disabled:cursor-not-allowed ${VARIANTS[variant]} ${className}`}
     >
       {loading && (

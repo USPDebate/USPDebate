@@ -1,4 +1,4 @@
-import { POS_STYLE, semPar } from '@/lib/draw';
+import { POS_STYLE, semPar, ordenarPosicoes, panelSala } from '@/lib/draw';
 
 // Render somente-leitura de um draw ({ salas, juizes }).
 export default function DrawView({ draw }) {
@@ -20,9 +20,11 @@ export default function DrawView({ draw }) {
               {sala.incompleta && <span className="text-muted normal-case"> · incompleta</span>}
             </span>
             <div className="flex items-center gap-2">
-              {sala.juiz && (
-                <span className="text-gold text-[10px] border border-gold/40 rounded-full px-2 py-0.5">
-                  Juiz: {sala.juiz}
+              {panelSala(sala).length > 0 && (
+                <span className="text-gold text-[10px] border border-gold/40 rounded-full px-2 py-0.5
+                  max-w-[180px] overflow-hidden text-ellipsis whitespace-nowrap">
+                  {panelSala(sala).length > 1 ? 'Juízes: ' : 'Juiz: '}
+                  {panelSala(sala).join(', ')}
                 </span>
               )}
               <span className="text-bordo text-[10px] border border-bordo/40 rounded-full px-2 py-0.5
@@ -31,7 +33,7 @@ export default function DrawView({ draw }) {
               </span>
             </div>
           </div>
-          {sala.posicoes.map((pos, i) => {
+          {ordenarPosicoes(sala.posicoes).map((pos, i) => {
             const p2 = semPar(pos.p2) ? null : pos.p2;
             return (
               <div key={i}

@@ -41,6 +41,20 @@ h1, h2, h3, .font-display {
 .animate-drop   { animation: dropIn .5s cubic-bezier(.2,.7,.2,1) both; }
 .animate-rise   { animation: riseIn .55s cubic-bezier(.2,.7,.2,1) both; }
 
+/* Micro-interações */
+@keyframes ripple   { to { transform: scale(4); opacity: 0; } }
+@keyframes toastIn  { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes checkPop { 0% { transform: scale(0); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
+
+.ripple {
+  position: absolute;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, .35);
+  transform: scale(0);
+  pointer-events: none;
+  animation: ripple .6s ease-out forwards;
+}
+
 /* Intro / splash */
 @keyframes drawSwoosh   { from { stroke-dashoffset: 280; } to { stroke-dashoffset: 0; } }
 @keyframes swooshSettle { 0% { transform: rotate(-10deg) scale(.7); opacity: 0; }

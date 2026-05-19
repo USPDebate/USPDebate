@@ -45,3 +45,18 @@ export function parsearDraw(dados) {
 export function semPar(v) {
   return v === '—' || v === '— (sem par)' || !v;
 }
+
+// Painel de juízes de uma sala (compatível com draws antigos de juiz único).
+export function panelSala(sala) {
+  if (Array.isArray(sala.juizes)) return sala.juizes;
+  if (sala.juiz) return [sala.juiz];
+  return [];
+}
+
+// Ordena as posições de uma sala na ordem do debate: OG → OO → CG → CO.
+const ORDEM_BP = { OG: 0, OO: 1, CG: 2, CO: 3 };
+export function ordenarPosicoes(posicoes) {
+  return [...posicoes].sort(
+    (a, b) => (ORDEM_BP[a.posicao] ?? 99) - (ORDEM_BP[b.posicao] ?? 99)
+  );
+}

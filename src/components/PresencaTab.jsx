@@ -6,6 +6,7 @@ import Alert from '@/components/ui/Alert';
 import Autocomplete from '@/components/ui/Autocomplete';
 import { IconUsers, IconUser, IconEye, IconCheck } from '@/components/ui/Icons';
 import { listarPessoas, listarPresentesHoje, registrarPresenca, atualizarDupla } from '@/lib/supabase';
+import { toast } from '@/lib/toast';
 
 const TIPOS = [
   { id: 'ps', label: 'Membro do PS', Icon: IconUsers },
@@ -68,7 +69,8 @@ export default function PresencaTab() {
     setRegistrando(false);
 
     if (res.ok) {
-      setAlerta({ tipo: 'success', msg: res.mensagem });
+      toast('success', res.mensagem);
+      setAlerta(null);
       setNome(''); setDupla(''); setNomeOk(false); setDuplaOk(false);
       setDuplaInvalida(false); setModoNovo(false);
       listarPessoas().then((p) => setPessoas(p || [])); // novo cadastro pode ter entrado
@@ -84,9 +86,9 @@ export default function PresencaTab() {
   async function salvarEdicao(novaDupla) {
     const res = await atualizarDupla({ pessoaId: editando.pessoaId, dupla: novaDupla });
     if (res.ok) {
-      setEditAlerta({ tipo: 'success', msg: res.mensagem });
+      toast('success', res.mensagem);
       carregar();
-      setTimeout(() => setEditando(null), 900);
+      setEditando(null);
     } else setEditAlerta({ tipo: 'error', msg: res.erro });
   }
 
