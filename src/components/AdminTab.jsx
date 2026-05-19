@@ -1,13 +1,15 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import Card, { SectionLabel } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Alert from '@/components/ui/Alert';
 import Autocomplete from '@/components/ui/Autocomplete';
 import AdminDrawEditor from '@/components/AdminDrawEditor';
 import { IconLock, IconUsers, IconScale, IconLayers, IconPlus, IconTrash } from '@/components/ui/Icons';
-import { callAPI, callAPICached, invalidate } from '@/lib/api';
-import { NOMES_PS, norm } from '@/lib/data';
+import {
+  verificarSenha, listarPresentesHoje, listarPessoas, getDrawHoje,
+  gerarDraw as apiGerarDraw, salvarDraw, apagarPresenca, mesclarPessoas, norm,
+} from '@/lib/supabase';
 
 const chaveDuplas = () => 'duplasAdmin_' + new Date().toLocaleDateString('pt-BR');
 const chaveJuizes = () => 'juizes_' + new Date().toLocaleDateString('pt-BR');
@@ -18,6 +20,7 @@ export default function AdminTab() {
   const [alertaLogin, setAlertaLogin] = useState(null);
 
   const [presentes, setPresentes] = useState(null);
+  const [pessoas, setPessoas] = useState([]);
   const [duplasAdmin, setDuplasAdmin] = useState([]);
   const [juizes, setJuizes] = useState([]);
   const [drawAtual, setDrawAtual] = useState(null);
@@ -25,52 +28,48 @@ export default function AdminTab() {
   const [da1, setDa1] = useState('');
   const [da2, setDa2] = useState('');
   const [inpJuiz, setInpJuiz] = useState('');
+  const [mergeKeep, setMergeKeep] = useState('');
+  const [mergeRemove, setMergeRemove] = useState('');
+
   const [alertaAcao, setAlertaAcao] = useState(null);
   const [alertaDraw, setAlertaDraw] = useState(null);
+  const [alertaMerge, setAlertaMerge] = useState(null);
   const [gerando, setGerando] = useState(false);
 
-  // ── nomes para autocomplete (PS + presentes não-PS) ──
+  const nomesPessoas = pessoas.map((p) => p.nome);
   const nomesPresentes = (presentes || []).filter((p) => !p.naoDebate).map((p) => p.nome);
-  const nomesDupla = (() => {
-    const base = [...NOMES_PS];
-    nomesPresentes.forEach((n) => { if (!base.some((b) => norm(b) === norm(n))) base.push(n); });
-    return base.sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  })();
 
   const total = (presentes || []).length;
-  const numSalas = Math.floor(total / 8);
-  const resto = total % 8;
+  const debatedores = (presentes || []).filter((p) => !p.naoDebate).length;
+  const numSalas = Math.floor(debatedores / 8);
+  const resto = debatedores % 8;
 
-  const carregarPresentes = useCallback(() => {
-    callAPICached('getPresentesHoje', null, 15000)
-      .then((p) => setPresentes(p || []))
-      .catch(() => setPresentes([]));
-  }, []);
+  function carregarPresentes() {
+    listarPresentesHoje().then((p) => setPresentes(p || [])).catch(() => setPresentes([]));
+  }
 
   // ── Login ──
-  function login() {
-    callAPI('verificarSenha', { senha })
-      .then((ok) => {
-        if (!ok) { setAlertaLogin({ tipo: 'error', msg: 'Senha incorreta.' }); return; }
-        setLogado(true);
-        carregarPresentes();
-        // restaura duplas manuais e juízes do dia (localStorage)
-        let juizesLocais = [];
-        try {
-          const sd = localStorage.getItem(chaveDuplas());
-          if (sd) setDuplasAdmin(JSON.parse(sd));
-          const sj = localStorage.getItem(chaveJuizes());
-          if (sj) { juizesLocais = JSON.parse(sj); setJuizes(juizesLocais); }
-        } catch (e) {}
-        // carrega draw existente; só usa os juízes do draw se não houver salvos localmente
-        callAPI('getDrawHoje').then((draw) => {
-          if (draw) {
-            setDrawAtual(draw);
-            if (draw.juizes?.length && juizesLocais.length === 0) setJuizes([...draw.juizes]);
-          }
-        }).catch(() => {});
-      })
-      .catch(() => setAlertaLogin({ tipo: 'error', msg: 'Erro de conexão.' }));
+  async function login() {
+    const ok = await verificarSenha(senha);
+    if (!ok) { setAlertaLogin({ tipo: 'error', msg: 'Senha incorreta.' }); return; }
+    setLogado(true);
+    carregarPresentes();
+    listarPessoas().then((p) => setPessoas(p || []));
+
+    let juizesLocais = [];
+    try {
+      const sd = localStorage.getItem(chaveDuplas());
+      if (sd) setDuplasAdmin(JSON.parse(sd));
+      const sj = localStorage.getItem(chaveJuizes());
+      if (sj) { juizesLocais = JSON.parse(sj); setJuizes(juizesLocais); }
+    } catch (e) {}
+
+    getDrawHoje().then((draw) => {
+      if (draw) {
+        setDrawAtual(draw);
+        if (draw.juizes?.length && juizesLocais.length === 0) setJuizes([...draw.juizes]);
+      }
+    }).catch(() => {});
   }
 
   // ── Duplas manuais ──
@@ -81,7 +80,7 @@ export default function AdminTab() {
   function adicionarDupla() {
     const p1 = da1.trim(), p2 = da2.trim();
     if (!p1 || !p2) { setAlertaAcao({ tipo: 'error', msg: 'Preencha os dois nomes.' }); return; }
-    if (norm(p1) === norm(p2)) { setAlertaAcao({ tipo: 'error', msg: 'Os nomes precisam ser diferentes.' }); return; }
+    if (norm(p1) === norm(p2)) { setAlertaAcao({ tipo: 'error', msg: 'Nomes precisam ser diferentes.' }); return; }
     if (duplasAdmin.some((d) => [d.p1, d.p2].some((x) => norm(x) === norm(p1) || norm(x) === norm(p2)))) {
       setAlertaAcao({ tipo: 'error', msg: 'Uma dessas pessoas já está em outro par manual.' }); return;
     }
@@ -91,7 +90,7 @@ export default function AdminTab() {
     if (pr1?.dupla) avisos.push(`${p1} já tem dupla: ${pr1.dupla}`);
     if (pr2?.dupla) avisos.push(`${p2} já tem dupla: ${pr2.dupla}`);
     if (avisos.length && !window.confirm('Conflito de dupla:\n\n• ' + avisos.join('\n• ') +
-      '\n\nForçar este par mesmo assim? Vai sobrescrever a dupla preenchida.')) return;
+      '\n\nForçar este par mesmo assim?')) return;
     persistirDuplas([...duplasAdmin, { p1, p2 }]);
     setDa1(''); setDa2(''); setAlertaAcao(null);
   }
@@ -118,66 +117,60 @@ export default function AdminTab() {
     if (drawAtual) setDrawAtual({ ...drawAtual, juizes: novo });
   }
 
-  // ── Gerar / salvar / publicar ──
-  function gerarDraw() {
+  // ── Draw ──
+  async function gerarDraw() {
     setGerando(true);
     setAlertaDraw({ tipo: 'info', msg: 'Gerando draw, aguarde...' });
-    callAPI('gerarDrawWeb', { juizes, duplasAdmin })
-      .then((res) => {
-        setGerando(false);
-        if (res.ok) {
-          setDrawAtual({ salas: res.salas, juizes: res.juizes, publicado: false });
-          setAlertaDraw({ tipo: 'success', msg: `Rascunho gerado: ${res.total} pessoas em ${res.salas.length} sala(s).` });
-        } else setAlertaDraw({ tipo: 'error', msg: res.erro });
-      })
-      .catch((e) => { setGerando(false); setAlertaDraw({ tipo: 'error', msg: 'Erro: ' + e.message }); });
+    const res = await apiGerarDraw({ juizes, duplasAdmin, senha });
+    setGerando(false);
+    if (res.ok) {
+      setDrawAtual({ salas: res.salas, juizes: res.juizes, publicado: false });
+      setAlertaDraw({ tipo: 'success', msg: `Rascunho gerado: ${res.total} pessoas em ${res.salas.length} sala(s).` });
+    } else setAlertaDraw({ tipo: 'error', msg: res.erro });
   }
-  function juizesPorSala() {
-    const jps = {};
-    (drawAtual?.salas || []).forEach((s) => { if (s.juiz?.trim()) jps[s.numero] = s.juiz.trim(); });
-    return jps;
+  async function salvarEdicao() {
+    const res = await salvarDraw({
+      salas: drawAtual?.salas || [], juizes, publicado: drawAtual?.publicado || false, senha,
+    });
+    setAlertaDraw(res.ok
+      ? { tipo: 'success', msg: drawAtual?.publicado ? 'Salvo e atualizado para os membros.' : 'Alterações salvas.' }
+      : { tipo: 'error', msg: res.erro });
   }
-  function salvarEdicao() {
-    callAPI('salvarDrawEditado', { salas: drawAtual?.salas || [], juizesPorSala: juizesPorSala(), juizes })
-      .then((res) => {
-        setAlertaDraw(res.ok
-          ? { tipo: 'success', msg: drawAtual?.publicado ? 'Alterações salvas e atualizadas para os membros.' : 'Alterações salvas.' }
-          : { tipo: 'error', msg: res.erro });
-      })
-      .catch((e) => setAlertaDraw({ tipo: 'error', msg: 'Erro: ' + e.message }));
-  }
-  function publicar() {
+  async function publicar() {
     if (!window.confirm('Publicar o draw? Todos os membros poderão ver.')) return;
-    callAPI('salvarDrawEditado', { salas: drawAtual?.salas || [], juizesPorSala: juizesPorSala(), juizes })
-      .then((r1) => {
-        if (!r1.ok) { setAlertaDraw({ tipo: 'error', msg: r1.erro }); return; }
-        return callAPI('publicarDraw').then((r2) => {
-          if (r2.ok) {
-            setDrawAtual({ ...drawAtual, publicado: true });
-            invalidate('getDrawHojePublico');
-            setAlertaDraw({ tipo: 'success', msg: 'Draw publicado! Os membros já podem ver.' });
-          } else setAlertaDraw({ tipo: 'error', msg: r2.erro });
-        });
-      })
-      .catch((e) => setAlertaDraw({ tipo: 'error', msg: 'Erro: ' + e.message }));
+    const res = await salvarDraw({ salas: drawAtual?.salas || [], juizes, publicado: true, senha });
+    if (res.ok) {
+      setDrawAtual({ ...drawAtual, publicado: true });
+      setAlertaDraw({ tipo: 'success', msg: 'Draw publicado! Os membros já podem ver.' });
+    } else setAlertaDraw({ tipo: 'error', msg: res.erro });
   }
 
   // ── Remover presença ──
-  function removerPresenca(nome) {
-    if (!window.confirm(`Remover presença de ${nome}?`)) return;
-    callAPI('apagarPresenca', { nome })
-      .then((res) => {
-        if (res.ok) {
-          // Atualização otimista: remove da lista sem nova chamada.
-          setPresentes((prev) => (prev || []).filter((p) => p.nome !== nome));
-          invalidate('getPresentesHoje');
-        }
-        setAlertaAcao(res.ok ? { tipo: 'success', msg: res.mensagem } : { tipo: 'error', msg: res.erro });
-      })
-      .catch(() => setAlertaAcao({ tipo: 'error', msg: 'Erro de conexão.' }));
+  async function removerPresenca(p) {
+    if (!window.confirm(`Remover presença de ${p.nome}?`)) return;
+    const res = await apagarPresenca({ presencaId: p.presencaId, senha });
+    if (res.ok) { carregarPresentes(); setAlertaAcao({ tipo: 'success', msg: res.mensagem }); }
+    else setAlertaAcao({ tipo: 'error', msg: res.erro });
   }
 
-  // ════════ Tela de login ════════
+  // ── Mesclar pessoas (dedup) ──
+  async function mesclar() {
+    const pKeep = pessoas.find((p) => norm(p.nome) === norm(mergeKeep));
+    const pRem = pessoas.find((p) => norm(p.nome) === norm(mergeRemove));
+    if (!pKeep || !pRem) { setAlertaMerge({ tipo: 'error', msg: 'Selecione as duas pessoas da lista.' }); return; }
+    if (pKeep.id === pRem.id) { setAlertaMerge({ tipo: 'error', msg: 'Selecione pessoas diferentes.' }); return; }
+    if (!window.confirm(`Mesclar cadastros:\n\nMANTER: ${pKeep.nome}\nREMOVER: ${pRem.nome}\n\n` +
+      `Todo o histórico de "${pRem.nome}" passa para "${pKeep.nome}" e o duplicado é apagado. Confirmar?`)) return;
+    const res = await mesclarPessoas({ manter: pKeep.id, remover: pRem.id, senha });
+    if (res.ok) {
+      setAlertaMerge({ tipo: 'success', msg: 'Cadastros mesclados.' });
+      setMergeKeep(''); setMergeRemove('');
+      listarPessoas().then((p) => setPessoas(p || []));
+      carregarPresentes();
+    } else setAlertaMerge({ tipo: 'error', msg: res.erro });
+  }
+
+  // ════════ Login ════════
   if (!logado) {
     return (
       <Card style={{ animationDelay: '.05s' }}>
@@ -237,9 +230,9 @@ export default function AdminTab() {
           </div>
         )}
         <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-end mb-2">
-          <Autocomplete value={da1} options={nomesDupla} placeholder="Pessoa 1" onChange={(v) => setDa1(v)} />
+          <Autocomplete value={da1} options={nomesPresentes} placeholder="Pessoa 1" onChange={(v) => setDa1(v)} />
           <span className="pb-3 text-muted">↔</span>
-          <Autocomplete value={da2} options={nomesDupla} placeholder="Pessoa 2" onChange={(v) => setDa2(v)} />
+          <Autocomplete value={da2} options={nomesPresentes} placeholder="Pessoa 2" onChange={(v) => setDa2(v)} />
         </div>
         <Button variant="ghost" onClick={adicionarDupla}>
           <span className="inline-flex items-center gap-2 justify-center"><IconPlus className="w-4 h-4" />Adicionar par</span>
@@ -261,7 +254,7 @@ export default function AdminTab() {
           </div>
         )}
         <div className="mb-2">
-          <Autocomplete value={inpJuiz} options={NOMES_PS} placeholder="Nome do juiz..." onChange={(v) => setInpJuiz(v)} />
+          <Autocomplete value={inpJuiz} options={nomesPessoas} placeholder="Nome do juiz..." onChange={(v) => setInpJuiz(v)} />
         </div>
         <Button variant="ghost" onClick={adicionarJuiz}>
           <span className="inline-flex items-center gap-2 justify-center"><IconPlus className="w-4 h-4" />Adicionar juiz</span>
@@ -310,9 +303,9 @@ export default function AdminTab() {
         {presentes && presentes.length > 0 && (
           <div className="space-y-2">
             {presentes.map((p, i) => {
-              const obs = p.naoDebate || p.tipo === 'observador';
+              const obs = p.naoDebate;
               return (
-                <div key={p.nome + i}
+                <div key={p.presencaId}
                   style={{ animationDelay: i * 0.04 + 's' }}
                   className="flex items-center justify-between p-3 rounded-xl border border-border
                     bg-surface-2 animate-fade-up transition hover:-translate-y-0.5 hover:border-bordo/50">
@@ -328,7 +321,7 @@ export default function AdminTab() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] text-muted">{p.hora}</span>
-                    <button onClick={() => removerPresenca(p.nome)}
+                    <button onClick={() => removerPresenca(p)}
                       className="text-danger border border-danger/40 rounded p-1.5">
                       <IconTrash className="w-3.5 h-3.5" />
                     </button>
@@ -338,6 +331,29 @@ export default function AdminTab() {
             })}
           </div>
         )}
+      </Card>
+
+      {/* Mesclar cadastros duplicados */}
+      <Card style={{ animationDelay: '.25s' }}>
+        <SectionLabel icon={IconUsers}>Mesclar cadastros duplicados</SectionLabel>
+        {alertaMerge && <Alert tipo={alertaMerge.tipo} msg={alertaMerge.msg} />}
+        <p className="text-xs text-muted mb-3">
+          Se a mesma pessoa foi cadastrada duas vezes, junte os registros aqui — o histórico
+          do removido passa para o mantido.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-2 mb-2">
+          <div>
+            <label className="block text-[10px] uppercase tracking-[0.15em] text-muted mb-1.5">Manter</label>
+            <Autocomplete value={mergeKeep} options={nomesPessoas} placeholder="Cadastro a manter..."
+              onChange={(v) => setMergeKeep(v)} />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-[0.15em] text-muted mb-1.5">Remover</label>
+            <Autocomplete value={mergeRemove} options={nomesPessoas} placeholder="Cadastro duplicado..."
+              onChange={(v) => setMergeRemove(v)} />
+          </div>
+        </div>
+        <Button variant="danger" onClick={mesclar}>Mesclar e apagar duplicado</Button>
       </Card>
     </div>
   );

@@ -3,14 +3,14 @@ import { useState, useEffect } from 'react';
 import Card, { SectionLabel } from '@/components/ui/Card';
 import DrawView from '@/components/DrawView';
 import { IconLayers } from '@/components/ui/Icons';
-import { callAPICached } from '@/lib/api';
+import { getDrawHojePublico } from '@/lib/supabase';
 
 export default function DrawTab() {
   // undefined = carregando | null = sem draw | objeto = draw
   const [draw, setDraw] = useState(undefined);
 
   useEffect(() => {
-    callAPICached('getDrawHojePublico', null, 30000)
+    getDrawHojePublico()
       .then((d) => setDraw(d || null))
       .catch(() => setDraw(null));
   }, []);

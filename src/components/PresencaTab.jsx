@@ -5,8 +5,7 @@ import Button from '@/components/ui/Button';
 import Alert from '@/components/ui/Alert';
 import Autocomplete from '@/components/ui/Autocomplete';
 import { IconUsers, IconUser, IconEye, IconCheck } from '@/components/ui/Icons';
-import { callAPI, callAPICached, invalidate } from '@/lib/api';
-import { NOMES_PS, norm } from '@/lib/data';
+import { listarPessoas, listarPresentesHoje, registrarPresenca, atualizarDupla } from '@/lib/supabase';
 
 const TIPOS = [
   { id: 'ps', label: 'Membro do PS', Icon: IconUsers },
@@ -20,82 +19,75 @@ function iniciais(nome) {
 
 export default function PresencaTab() {
   const [tipo, setTipo] = useState('ps');
+  const [pessoas, setPessoas] = useState([]);       // [{id,nome,nome_norm}]
+  const [modoNovo, setModoNovo] = useState(false);  // fluxo "primeira vez"
   const [nome, setNome] = useState('');
+  const [nomeOk, setNomeOk] = useState(false);      // selecionou da lista
   const [dupla, setDupla] = useState('');
   const [duplaOk, setDuplaOk] = useState(false);
   const [duplaInvalida, setDuplaInvalida] = useState(false);
   const [registrando, setRegistrando] = useState(false);
   const [alerta, setAlerta] = useState(null);
 
-  const [presentes, setPresentes] = useState(null); // null = carregando
-  const [editando, setEditando] = useState(null);   // { nome, dupla }
+  const [presentes, setPresentes] = useState(null);
+  const [editando, setEditando] = useState(null);
   const [editDupla, setEditDupla] = useState('');
   const [editAlerta, setEditAlerta] = useState(null);
 
-  const nomesPresentes = (presentes || []).filter((p) => !p.naoDebate).map((p) => p.nome);
-  const nomesDupla = (() => {
-    const base = [...NOMES_PS];
-    nomesPresentes.forEach((n) => { if (!base.some((b) => norm(b) === norm(n))) base.push(n); });
-    return base.sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  })();
+  const nomesPessoas = pessoas.map((p) => p.nome);
 
   const carregar = useCallback(() => {
-    callAPICached('getPresentesHoje', null, 15000)
-      .then((p) => setPresentes(p || []))
-      .catch(() => setPresentes([]));
+    listarPresentesHoje().then((p) => setPresentes(p || [])).catch(() => setPresentes([]));
   }, []);
-  useEffect(() => { carregar(); }, [carregar]);
 
-  function registrar() {
-    if (!nome.trim()) { setAlerta({ tipo: 'error', msg: 'Informe seu nome.' }); return; }
-    if (tipo === 'ps' && !NOMES_PS.some((n) => norm(n) === norm(nome))) {
-      setAlerta({ tipo: 'error', msg: 'Selecione seu nome da lista do PS.' }); return;
+  useEffect(() => {
+    listarPessoas().then((p) => setPessoas(p || [])).catch(() => {});
+    carregar();
+  }, [carregar]);
+
+  async function registrar() {
+    const nomeFinal = nome.trim();
+    if (!nomeFinal) { setAlerta({ tipo: 'error', msg: 'Informe seu nome.' }); return; }
+
+    if (modoNovo) {
+      const partes = nomeFinal.split(/\s+/).filter((x) => x.length >= 2);
+      if (partes.length < 2) {
+        setAlerta({ tipo: 'error', msg: 'Digite seu nome e sobrenome completos.' }); return;
+      }
+    } else if (!nomeOk) {
+      setAlerta({ tipo: 'error', msg: 'Selecione seu nome da lista — ou clique em "primeira vez".' });
+      return;
     }
-    if (dupla.trim() && !duplaOk) {
+    if (tipo !== 'observador' && dupla.trim() && !duplaOk) {
       setDuplaInvalida(true);
       setAlerta({ tipo: 'error', msg: 'Selecione a dupla clicando num nome da lista.' }); return;
     }
+
     setRegistrando(true);
-    callAPI('registrarPresenca', { nome: nome.trim(), dupla: dupla.trim(), tipo })
-      .then((res) => {
-        setRegistrando(false);
-        if (res.ok) {
-          setAlerta({ tipo: 'success', msg: res.mensagem });
-          // Atualização otimista: já mostra na lista, sem esperar nova chamada.
-          const entrada = {
-            nome: nome.trim(),
-            dupla: tipo === 'observador' ? '' : dupla.trim(),
-            tipo,
-            naoDebate: tipo === 'observador',
-            hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-          };
-          setPresentes((prev) =>
-            [...(prev || []), entrada].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')));
-          setNome(''); setDupla(''); setDuplaOk(false); setDuplaInvalida(false);
-          invalidate('getPresentesHoje');
-        } else {
-          setAlerta({ tipo: res.erro.includes('já registrou') ? 'info' : 'error', msg: res.erro });
-        }
-      })
-      .catch(() => { setRegistrando(false); setAlerta({ tipo: 'error', msg: 'Erro de conexão.' }); });
+    const res = await registrarPresenca({ nome: nomeFinal, dupla: dupla.trim(), tipo });
+    setRegistrando(false);
+
+    if (res.ok) {
+      setAlerta({ tipo: 'success', msg: res.mensagem });
+      setNome(''); setDupla(''); setNomeOk(false); setDuplaOk(false);
+      setDuplaInvalida(false); setModoNovo(false);
+      listarPessoas().then((p) => setPessoas(p || [])); // novo cadastro pode ter entrado
+      carregar();
+    } else {
+      setAlerta({ tipo: res.erro.includes('já registrou') ? 'info' : 'error', msg: res.erro });
+    }
   }
 
   function abrirEdicao(p) {
     setEditando(p); setEditDupla(p.dupla || ''); setEditAlerta(null);
   }
-  function salvarEdicao(novaDupla) {
-    callAPI('atualizarDupla', { nome: editando.nome, dupla: novaDupla })
-      .then((res) => {
-        if (res.ok) {
-          // Atualização otimista da dupla na lista local.
-          setPresentes((prev) => (prev || []).map((p) =>
-            p.nome === editando.nome ? { ...p, dupla: novaDupla } : p));
-          invalidate('getPresentesHoje');
-          setEditAlerta({ tipo: 'success', msg: res.mensagem });
-          setTimeout(() => setEditando(null), 700);
-        } else setEditAlerta({ tipo: 'error', msg: res.erro });
-      })
-      .catch(() => setEditAlerta({ tipo: 'error', msg: 'Erro de conexão.' }));
+  async function salvarEdicao(novaDupla) {
+    const res = await atualizarDupla({ pessoaId: editando.pessoaId, dupla: novaDupla });
+    if (res.ok) {
+      setEditAlerta({ tipo: 'success', msg: res.mensagem });
+      carregar();
+      setTimeout(() => setEditando(null), 900);
+    } else setEditAlerta({ tipo: 'error', msg: res.erro });
   }
 
   return (
@@ -117,7 +109,7 @@ export default function PresencaTab() {
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => { setTipo(t.id); setNome(''); }}
+                  onClick={() => setTipo(t.id)}
                   className={`flex-1 flex items-center justify-center gap-2 rounded-xl text-[11px]
                     font-semibold uppercase tracking-wide border transition-all duration-300 ease-out
                     ${ativo
@@ -136,24 +128,39 @@ export default function PresencaTab() {
           <label className="block text-[10px] uppercase tracking-[0.15em] text-muted mb-2">
             Seu nome *
           </label>
-          {tipo === 'visitante' ? (
-            <input
-              type="text"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Digite seu nome completo..."
-              className="w-full px-3.5 py-3 rounded-lg text-base outline-none focus:border-bordo"
-            />
+          {modoNovo ? (
+            <>
+              <input
+                type="text"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                placeholder="Digite seu nome e sobrenome completos..."
+                className="w-full px-3.5 py-3 rounded-lg text-base outline-none focus:border-bordo"
+              />
+              <button
+                type="button"
+                onClick={() => { setModoNovo(false); setNome(''); }}
+                className="mt-1.5 text-[11px] text-bordo hover:underline"
+              >
+                ← Voltar para a lista
+              </button>
+            </>
           ) : (
-            <Autocomplete
-              value={nome}
-              options={NOMES_PS}
-              placeholder={tipo === 'ps' ? 'Selecione seu nome na lista...' : 'Digite ou selecione...'}
-              onChange={(v) => setNome(v)}
-            />
-          )}
-          {tipo === 'ps' && (
-            <p className="mt-1.5 text-[11px] text-muted">Apenas nomes cadastrados no PS são aceitos.</p>
+            <>
+              <Autocomplete
+                value={nome}
+                options={nomesPessoas}
+                placeholder="Comece a digitar e selecione seu nome..."
+                onChange={(v, escolhido) => { setNome(v); setNomeOk(escolhido); }}
+              />
+              <button
+                type="button"
+                onClick={() => { setModoNovo(true); setNome(''); setNomeOk(false); }}
+                className="mt-1.5 text-[11px] text-bordo hover:underline"
+              >
+                Não estou na lista — é minha primeira vez
+              </button>
+            </>
           )}
         </div>
 
@@ -164,8 +171,8 @@ export default function PresencaTab() {
             </label>
             <Autocomplete
               value={dupla}
-              options={nomesDupla}
-              placeholder="Selecione quem vai debater hoje..."
+              options={nomesPessoas}
+              placeholder="Selecione quem é sua dupla..."
               invalid={duplaInvalida}
               onChange={(v, escolhido) => {
                 setDupla(v); setDuplaOk(escolhido); setDuplaInvalida(false);
@@ -201,7 +208,7 @@ export default function PresencaTab() {
             </label>
             <Autocomplete
               value={editDupla}
-              options={nomesDupla}
+              options={nomesPessoas}
               placeholder="Nome da dupla..."
               onChange={(v) => setEditDupla(v)}
             />
@@ -217,6 +224,7 @@ export default function PresencaTab() {
       {/* ─── Presentes hoje ─── */}
       <Card style={{ animationDelay: '.16s' }}>
         <SectionLabel
+          icon={IconUsers}
           right={
             presentes && (
               <span className="bg-bordo text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
@@ -224,7 +232,6 @@ export default function PresencaTab() {
               </span>
             )
           }
-          icon={IconUsers}
         >
           Presentes hoje
         </SectionLabel>
@@ -253,10 +260,10 @@ export default function PresencaTab() {
         {presentes && presentes.length > 0 && (
           <div className="space-y-2">
             {presentes.map((p, i) => {
-              const obs = p.naoDebate || p.tipo === 'observador';
+              const obs = p.naoDebate;
               return (
                 <div
-                  key={p.nome + i}
+                  key={p.presencaId}
                   className="flex items-center justify-between p-3 rounded-xl2 border border-border
                     bg-surface-2 transition hover:-translate-y-0.5 hover:border-bordo/50 animate-fade-up"
                   style={{ animationDelay: i * 0.04 + 's' }}
