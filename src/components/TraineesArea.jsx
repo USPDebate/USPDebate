@@ -93,13 +93,18 @@ export default function TraineesArea({ senha }) {
 
   async function togglePresenca(pessoaId, sem) {
     const presente = !presenteNa(pessoaId, sem);
+    const anterior = presencas;
     if (presente) {
       setPresencas((cur) => [...cur, { pessoa_id: pessoaId, data: sem.data_inicio }]);
     } else {
       setPresencas((cur) => cur.filter(
         (p) => !(p.pessoa_id === pessoaId && p.data === sem.data_inicio)));
     }
-    await marcarPresenca({ pessoaId, data: sem.data_inicio, presente, senha });
+    const res = await marcarPresenca({ pessoaId, data: sem.data_inicio, presente, senha });
+    if (!res.ok) {
+      setPresencas(anterior);
+      toast('error', res.erro || 'Não foi possível salvar a presença.');
+    }
   }
 
   function presenteNa(pessoaId, sem) {
@@ -168,7 +173,9 @@ export default function TraineesArea({ senha }) {
       <Card style={{ animationDelay: '.09s' }}>
         <SectionLabel icon={IconClock}>Semanas do acompanhamento</SectionLabel>
         <p className="text-xs text-muted mb-3">
-          Cada semana corresponde a uma data de treino. A numeração é automática pela ordem.
+          Uma <span className="text-text">semana</span> é uma data de treino que você quer
+          acompanhar na grade abaixo. Clique numa data de treino para adicioná-la — cada
+          uma vira uma coluna (Semana 1, 2, 3…), numerada automaticamente pela ordem.
         </p>
         {semanas.length > 0 && (
           <div className="space-y-1.5 mb-3">
@@ -185,7 +192,7 @@ export default function TraineesArea({ senha }) {
           </div>
         )}
         <div className="text-[10px] uppercase tracking-[0.15em] text-muted mb-1.5">
-          Adicionar semana — escolha o treino
+          Adicionar semana — clique numa data de treino
         </div>
         {datasDisponiveis.length > 0 ? (
           <div className="flex flex-wrap gap-2">
@@ -193,7 +200,7 @@ export default function TraineesArea({ senha }) {
               <button key={d} onClick={() => addSemana(d)}
                 className="text-[12px] border border-border rounded-lg px-3 py-2 text-muted
                   hover:border-bordo hover:text-bordo transition">
-                + {fmtCurto(d)}
+                + Treino de {fmtCurto(d)}
               </button>
             ))}
           </div>
