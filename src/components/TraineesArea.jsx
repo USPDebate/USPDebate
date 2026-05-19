@@ -46,6 +46,42 @@ function semanaDe(iso) {
   return { inicio: isoDe(ini), fim: isoDe(fim) };
 }
 
+function fmtBR(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+// 'dd/mm/aaaa' → 'aaaa-mm-dd', ou null se inválida.
+function parseBR(str) {
+  const m = (str || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return null;
+  const d = +m[1], mo = +m[2], y = +m[3];
+  const iso = `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const dt = new Date(iso + 'T00:00:00');
+  if (dt.getMonth() + 1 !== mo || dt.getDate() !== d) return null;
+  return iso;
+}
+
+// Campo de data em formato brasileiro (dd/mm/aaaa). Confirma no blur.
+function DataBR({ value, onCommit }) {
+  const [txt, setTxt] = useState(fmtBR(value));
+  useEffect(() => { setTxt(fmtBR(value)); }, [value]);
+  return (
+    <input
+      type="text" inputMode="numeric" placeholder="dd/mm/aaaa" maxLength={10}
+      value={txt}
+      onChange={(e) => setTxt(e.target.value)}
+      onBlur={() => {
+        const iso = parseBR(txt);
+        if (iso) onCommit(iso); else setTxt(fmtBR(value));
+      }}
+      className="bg-surface border border-border rounded px-2 py-1 text-[12px]
+        text-text outline-none focus:border-bordo w-[92px] text-center"
+    />
+  );
+}
+
 export default function TraineesArea({ senha }) {
   const [trainees, setTrainees] = useState([]);
   const [semanas, setSemanas] = useState([]);
@@ -229,15 +265,11 @@ export default function TraineesArea({ senha }) {
                 className="flex items-center gap-2 bg-surface-2 border border-border rounded-lg px-3 py-2">
                 <span className="text-[13px] font-semibold whitespace-nowrap">Semana {i + 1}</span>
                 <div className="flex-1 flex items-center gap-1.5 flex-wrap justify-end">
-                  <input type="date" value={s.data_inicio}
-                    onChange={(e) => editarData(s, 'data_inicio', e.target.value)}
-                    className="bg-surface border border-border rounded px-2 py-1 text-[12px]
-                      text-text outline-none focus:border-bordo" />
+                  <DataBR value={s.data_inicio}
+                    onCommit={(iso) => editarData(s, 'data_inicio', iso)} />
                   <span className="text-[11px] text-muted">a</span>
-                  <input type="date" value={s.data_fim}
-                    onChange={(e) => editarData(s, 'data_fim', e.target.value)}
-                    className="bg-surface border border-border rounded px-2 py-1 text-[12px]
-                      text-text outline-none focus:border-bordo" />
+                  <DataBR value={s.data_fim}
+                    onCommit={(iso) => editarData(s, 'data_fim', iso)} />
                 </div>
                 <button onClick={() => removerSemana(s.id)} className="text-danger p-1">
                   <IconTrash className="w-4 h-4" />
