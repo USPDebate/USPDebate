@@ -411,6 +411,15 @@ export async function apagarSemana(id) {
   return { ok: true };
 }
 
+// Correção manual de presença num treino (admin).
+export async function marcarPresenca({ pessoaId, data, presente, senha }) {
+  const { error } = await sb.rpc('marcar_presenca', {
+    p_senha: senha, p_pessoa_id: pessoaId, p_data: data, p_presente: presente,
+  });
+  if (error) return { ok: false, erro: error.message };
+  return { ok: true };
+}
+
 export async function toggleFormacao({ pessoaId, semanaId, feito }) {
   const temp = await temporadaAtiva();
   if (!temp) return { ok: false };

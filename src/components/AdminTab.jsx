@@ -571,7 +571,7 @@ export default function AdminTab() {
     return (
       <div className="space-y-3">
         <Voltar />
-        <TraineesArea />
+        <TraineesArea senha={senha} />
       </div>
     );
   }

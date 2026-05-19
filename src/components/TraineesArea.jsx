@@ -7,7 +7,8 @@ import ConfirmModal from '@/components/ui/ConfirmModal';
 import { IconUsers, IconClock, IconChart, IconTrash, IconPlus } from '@/components/ui/Icons';
 import {
   getTrainees, getTraineeSemanas, getTraineeFormacoes, getPresencasRaw, getSpeaks,
-  getDatasPresenca, importarTrainees, resetarTrainees, criarSemana, apagarSemana, toggleFormacao,
+  getDatasPresenca, importarTrainees, resetarTrainees, criarSemana, apagarSemana,
+  toggleFormacao, marcarPresenca,
 } from '@/lib/supabase';
 import { calibrar, ranking } from '@/lib/speaks-stats';
 import { toast } from '@/lib/toast';
@@ -29,7 +30,7 @@ function fmtCurto(iso) {
   return `${d}/${m}`;
 }
 
-export default function TraineesArea() {
+export default function TraineesArea({ senha }) {
   const [trainees, setTrainees] = useState([]);
   const [semanas, setSemanas] = useState([]);
   const [formacoes, setFormacoes] = useState(new Set()); // 'pessoaId-semanaId'
@@ -88,6 +89,17 @@ export default function TraineesArea() {
     if (feito) novo.add(chave); else novo.delete(chave);
     setFormacoes(novo);
     await toggleFormacao({ pessoaId, semanaId, feito });
+  }
+
+  async function togglePresenca(pessoaId, sem) {
+    const presente = !presenteNa(pessoaId, sem);
+    if (presente) {
+      setPresencas((cur) => [...cur, { pessoa_id: pessoaId, data: sem.data_inicio }]);
+    } else {
+      setPresencas((cur) => cur.filter(
+        (p) => !(p.pessoa_id === pessoaId && p.data === sem.data_inicio)));
+    }
+    await marcarPresenca({ pessoaId, data: sem.data_inicio, presente, senha });
   }
 
   function presenteNa(pessoaId, sem) {
@@ -204,7 +216,8 @@ export default function TraineesArea() {
         {!carregando && trainees.length > 0 && (
           <>
             <p className="text-[11px] text-muted mb-3">
-              <strong className="text-success">P</strong> = foi ao treino da semana (automático) ·{' '}
+              <strong className="text-success">P</strong> = presença no treino — vem automática,
+              toque para corrigir ·{' '}
               <strong className="text-gold">F</strong> = formação feita — toque para marcar.
             </p>
             <div className="space-y-5">
@@ -244,13 +257,14 @@ export default function TraineesArea() {
                                 return (
                                   <td key={s.id} className="px-2 py-1">
                                     <div className="flex gap-2 justify-center">
-                                      <span title="Presença no treino"
+                                      <button title="Presença no treino — toque para corrigir"
+                                        onClick={() => togglePresenca(t.pessoaId, s)}
                                         className={`w-10 h-10 rounded-lg grid place-items-center text-[12px]
-                                          font-bold ${pres
-                                            ? 'bg-success/25 text-success'
-                                            : 'bg-surface-2 text-muted/30'}`}>
+                                          font-bold border transition ${pres
+                                            ? 'bg-success/25 text-success border-success/50'
+                                            : 'bg-surface-2 text-muted/40 border-border hover:border-success hover:text-success'}`}>
                                         P
-                                      </span>
+                                      </button>
                                       <button title="Formação feita — toque para marcar"
                                         onClick={() => toggle(t.pessoaId, s.id)}
                                         className={`w-10 h-10 rounded-lg grid place-items-center text-[12px]

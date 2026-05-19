@@ -71,8 +71,8 @@ export default function Page() {
         ))}
       </nav>
 
-      {/* Conteúdo — largura total no desktop */}
-      <main className="relative z-10 w-full px-4 py-4 sm:px-8 sm:py-6">
+      {/* Conteúdo — largura ampla, mas não a tela inteira */}
+      <main className="relative z-10 max-w-7xl mx-auto px-4 py-4 sm:px-8 sm:py-6">
         {aba === 'presenca'   && <PresencaTab />}
         {aba === 'draw'       && <DrawTab />}
         {aba === 'speaks'     && <SpeaksTab />}
