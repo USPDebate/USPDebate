@@ -405,6 +405,13 @@ export async function criarSemana({ inicio, fim }) {
   return { ok: true };
 }
 
+export async function editarSemana({ id, inicio, fim }) {
+  const { error } = await sb.from('trainee_semanas')
+    .update({ data_inicio: inicio, data_fim: fim }).eq('id', id);
+  if (error) return { ok: false, erro: error.message };
+  return { ok: true };
+}
+
 export async function apagarSemana(id) {
   const { error } = await sb.from('trainee_semanas').delete().eq('id', id);
   if (error) return { ok: false, erro: error.message };

@@ -7,7 +7,7 @@ import ConfirmModal from '@/components/ui/ConfirmModal';
 import { IconUsers, IconClock, IconChart, IconTrash, IconPlus } from '@/components/ui/Icons';
 import {
   getTrainees, getTraineeSemanas, getTraineeFormacoes, getPresencasRaw, getSpeaks,
-  getDatasPresenca, importarTrainees, resetarTrainees, criarSemana, apagarSemana,
+  getDatasPresenca, importarTrainees, resetarTrainees, criarSemana, editarSemana, apagarSemana,
   toggleFormacao, marcarPresenca,
 } from '@/lib/supabase';
 import { calibrar, ranking } from '@/lib/speaks-stats';
@@ -92,6 +92,21 @@ export default function TraineesArea({ senha }) {
   async function addSemana(w) {
     const res = await criarSemana({ inicio: w.inicio, fim: w.fim });
     if (res.ok) recarregar(); else setAlerta({ tipo: 'error', msg: res.erro });
+  }
+  async function editarData(sem, campo, valor) {
+    if (!valor) return;
+    const novo = { ...sem, [campo]: valor };
+    if (novo.data_fim < novo.data_inicio) {
+      toast('error', 'A data final deve ser igual ou posterior à inicial.');
+      return;
+    }
+    setSemanas((cur) => cur.map((s) => (s.id === sem.id ? novo : s)));
+    const res = await editarSemana({ id: sem.id, inicio: novo.data_inicio, fim: novo.data_fim });
+    if (res.ok) recarregar();
+    else {
+      setSemanas((cur) => cur.map((s) => (s.id === sem.id ? sem : s)));
+      toast('error', res.erro || 'Não foi possível salvar a semana.');
+    }
   }
   async function removerSemana(id) {
     if (!window.confirm('Apagar esta semana? As formações marcadas nela serão perdidas.')) return;
@@ -212,10 +227,18 @@ export default function TraineesArea({ senha }) {
             {semanas.map((s, i) => (
               <div key={s.id}
                 className="flex items-center gap-2 bg-surface-2 border border-border rounded-lg px-3 py-2">
-                <span className="flex-1 text-[13px] font-semibold">Semana {i + 1}</span>
-                <span className="text-[11px] text-muted">
-                  {fmtCurto(s.data_inicio)} a {fmtCurto(s.data_fim)}
-                </span>
+                <span className="text-[13px] font-semibold whitespace-nowrap">Semana {i + 1}</span>
+                <div className="flex-1 flex items-center gap-1.5 flex-wrap justify-end">
+                  <input type="date" value={s.data_inicio}
+                    onChange={(e) => editarData(s, 'data_inicio', e.target.value)}
+                    className="bg-surface border border-border rounded px-2 py-1 text-[12px]
+                      text-text outline-none focus:border-bordo" />
+                  <span className="text-[11px] text-muted">a</span>
+                  <input type="date" value={s.data_fim}
+                    onChange={(e) => editarData(s, 'data_fim', e.target.value)}
+                    className="bg-surface border border-border rounded px-2 py-1 text-[12px]
+                      text-text outline-none focus:border-bordo" />
+                </div>
                 <button onClick={() => removerSemana(s.id)} className="text-danger p-1">
                   <IconTrash className="w-4 h-4" />
                 </button>
