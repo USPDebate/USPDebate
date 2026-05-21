@@ -172,15 +172,35 @@ export default function AdminTab() {
     getSpeaksDeData(d).then((r) => setRegLinhas(r || [])).catch(() => setRegLinhas([]));
   }
   function selecionarTreinoReg(d) {
-    setRegData(d); setRegEditNome(null);
+    setRegData(d); cancelarEditNome();
     setNovoReg({ nome: '', sala: '', posicao: 'OG', speaks: '', juiz: '' });
     carregarLinhasReg(d);
   }
-  async function alterarNomeLinha(linha, nomeNovo) {
-    const pessoa = pessoas.find((p) => norm(p.nome) === norm(nomeNovo));
-    if (!pessoa) { toast('error', 'Selecione um nome da lista.'); return; }
-    const res = await editarSpeak({ id: linha.id, pessoaId: pessoa.id, senha });
-    if (res.ok) { toast('success', 'Nome alterado.'); setRegEditNome(null); carregarLinhasReg(regData); }
+  function abrirEditNome(l) {
+    setRegEditNome(l.id); setRegEditNomeTxt(l.nome); setRegEditNomeOk(true);
+  }
+  function cancelarEditNome() {
+    setRegEditNome(null); setRegEditNomeTxt(''); setRegEditNomeOk(true);
+  }
+  async function commitEditNome(linha, criarNovo) {
+    const nomeTxt = regEditNomeTxt.trim();
+    if (!nomeTxt) return;
+    let pessoaId;
+    if (criarNovo) {
+      const partes = nomeTxt.split(/\s+/).filter((x) => x.length >= 2);
+      if (partes.length < 2) { toast('error', 'Digite nome e sobrenome completos.'); return; }
+      if (!window.confirm(`Cadastrar "${nomeTxt}" como nova pessoa e atribuir à linha?`)) return;
+      const p = await acharOuCriarPessoa(nomeTxt);
+      if (!p) { toast('error', 'Não consegui criar o cadastro.'); return; }
+      pessoaId = p.id;
+      setPessoas((cur) => cur.some((x) => x.id === p.id) ? cur : [...cur, p]);
+    } else {
+      const p = pessoas.find((x) => norm(x.nome) === norm(nomeTxt));
+      if (!p) { toast('error', 'Selecione um nome da lista.'); return; }
+      pessoaId = p.id;
+    }
+    const res = await editarSpeak({ id: linha.id, pessoaId, senha });
+    if (res.ok) { toast('success', 'Nome alterado.'); cancelarEditNome(); carregarLinhasReg(regData); }
     else toast('error', res.erro);
   }
   async function alterarNotaLinha(linha, novaNota) {
@@ -198,8 +218,21 @@ export default function AdminTab() {
     else toast('error', res.erro);
   }
   async function adicionarLinha() {
-    const pessoa = pessoas.find((p) => norm(p.nome) === norm(novoReg.nome));
-    if (!pessoa) { toast('error', 'Escolha a pessoa da lista.'); return; }
+    const nomeTxt = novoReg.nome.trim();
+    if (!nomeTxt) { toast('error', 'Preencha o nome.'); return; }
+    let pessoa = pessoas.find((p) => norm(p.nome) === norm(nomeTxt));
+    if (!pessoa) {
+      const partes = nomeTxt.split(/\s+/).filter((x) => x.length >= 2);
+      if (partes.length < 2) {
+        toast('error', `"${nomeTxt}" não está na lista. Para cadastrar, digite nome e sobrenome completos.`);
+        return;
+      }
+      if (!window.confirm(`Cadastrar "${nomeTxt}" como nova pessoa e adicionar o registro?`)) return;
+      const novo = await acharOuCriarPessoa(nomeTxt);
+      if (!novo) { toast('error', 'Não consegui criar o cadastro.'); return; }
+      pessoa = novo;
+      setPessoas((cur) => cur.some((x) => x.id === novo.id) ? cur : [...cur, novo]);
+    }
     const sala = Number(novoReg.sala);
     if (!sala || sala < 1) { toast('error', 'Número de sala inválido.'); return; }
     const speaks = Number(novoReg.speaks);
@@ -834,13 +867,31 @@ export default function AdminTab() {
                           {l.posicao || '—'}
                         </span>
                         {regEditNome === l.id ? (
-                          <Autocomplete
-                            value={l.nome} options={nomesPessoas}
-                            placeholder="Trocar nome..."
-                            onChange={(v, esc) => { if (esc) alterarNomeLinha(l, v); }}
-                          />
+                          <div className="flex flex-col gap-1">
+                            <Autocomplete
+                              value={regEditNomeTxt} options={nomesPessoas}
+                              placeholder="Trocar nome..."
+                              onChange={(v, esc) => { setRegEditNomeTxt(v); setRegEditNomeOk(esc); }}
+                            />
+                            <div className="flex gap-1.5 flex-wrap">
+                              {regEditNomeOk && regEditNomeTxt.trim() && regEditNomeTxt.trim() !== l.nome && (
+                                <button onClick={() => commitEditNome(l, false)}
+                                  className="text-[10px] text-success border border-success/40 rounded px-2 py-1">
+                                  Salvar
+                                </button>
+                              )}
+                              {!regEditNomeOk && regEditNomeTxt.trim() && (
+                                <button onClick={() => commitEditNome(l, true)}
+                                  className="text-[10px] text-bordo border border-bordo/40 rounded px-2 py-1">
+                                  + Cadastrar &quot;{regEditNomeTxt.trim()}&quot;
+                                </button>
+                              )}
+                              <button onClick={cancelarEditNome}
+                                className="text-[10px] text-muted px-2 py-1">cancelar</button>
+                            </div>
+                          </div>
                         ) : (
-                          <button onClick={() => setRegEditNome(l.id)}
+                          <button onClick={() => abrirEditNome(l)}
                             className="text-left font-semibold truncate hover:text-bordo">
                             {l.nome || <span className="text-danger">(sem cadastro)</span>}
                           </button>
