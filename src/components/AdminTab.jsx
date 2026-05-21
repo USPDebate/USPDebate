@@ -13,6 +13,7 @@ import {
   gerarDraw as apiGerarDraw, salvarDraw, apagarPresenca, mesclarPessoas, apagarPessoa,
   getSpeaks, listarPresentes, getDatasPresenca, getDatasSpeaks, apagarSpeaksData, norm,
   apagarDrawDia, getSpeaksDeData, editarSpeak, apagarSpeak, inserirSpeak,
+  acharOuCriarPessoa,
 } from '@/lib/supabase';
 import { calibrar, analiseJuizes } from '@/lib/speaks-stats';
 import { toast } from '@/lib/toast';
@@ -66,6 +67,8 @@ export default function AdminTab() {
   const [regData, setRegData] = useState(null);     // treino selecionado para correção
   const [regLinhas, setRegLinhas] = useState(null);
   const [regEditNome, setRegEditNome] = useState(null); // id da linha em edição de nome
+  const [regEditNomeTxt, setRegEditNomeTxt] = useState('');
+  const [regEditNomeOk, setRegEditNomeOk] = useState(true);
   const [novoReg, setNovoReg] = useState({ nome: '', sala: '', posicao: 'OG', speaks: '', juiz: '' });
 
   const nomesPessoas = pessoas.map((p) => p.nome);
