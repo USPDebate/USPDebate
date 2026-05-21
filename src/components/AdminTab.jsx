@@ -7,7 +7,7 @@ import Autocomplete from '@/components/ui/Autocomplete';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import AdminDrawEditor from '@/components/AdminDrawEditor';
 import TraineesArea from '@/components/TraineesArea';
-import { IconLock, IconUsers, IconScale, IconLayers, IconPlus, IconTrash } from '@/components/ui/Icons';
+import { IconLock, IconUsers, IconScale, IconLayers, IconPlus, IconTrash, IconCheck } from '@/components/ui/Icons';
 import {
   verificarSenha, listarPresentesHoje, listarPessoas, getDrawHoje,
   gerarDraw as apiGerarDraw, salvarDraw, apagarPresenca, mesclarPessoas, apagarPessoa,
@@ -201,9 +201,21 @@ export default function AdminTab() {
     if (!sala || sala < 1) { toast('error', 'Número de sala inválido.'); return; }
     const speaks = Number(novoReg.speaks);
     if (isNaN(speaks) || speaks < 0 || speaks > 100) { toast('error', 'Nota inválida (0–100).'); return; }
+    // O juiz tem que ser o mesmo que preencheu o ballot — se a sala já tem registros,
+    // herda automaticamente; senão exige selecionar um cadastro da lista.
+    const juizExistente = (regLinhas || []).find((l) => l.sala === sala && l.juiz)?.juiz;
+    let juiz = juizExistente;
+    if (!juiz) {
+      juiz = novoReg.juiz.trim();
+      if (!juiz) { toast('error', 'Selecione o juiz que preencheu o ballot.'); return; }
+      if (!pessoas.some((p) => norm(p.nome) === norm(juiz))) {
+        toast('error', 'O juiz precisa ser um nome da lista — selecione clicando.');
+        return;
+      }
+    }
     const res = await inserirSpeak({
       pessoaId: pessoa.id, data: regData, sala, posicao: novoReg.posicao,
-      speaks, juiz: novoReg.juiz.trim(), senha,
+      speaks, juiz, senha,
     });
     if (res.ok) {
       toast('success', 'Registro adicionado.');
@@ -867,9 +879,42 @@ export default function AdminTab() {
                   onChange={(e) => setNovoReg({ ...novoReg, speaks: e.target.value })}
                   className="px-2 py-2 rounded-lg text-[12px] text-center bg-surface-2 border border-border outline-none focus:border-bordo" />
               </div>
-              <input type="text" placeholder="Juiz (opcional)" value={novoReg.juiz}
-                onChange={(e) => setNovoReg({ ...novoReg, juiz: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg text-[12px] bg-surface-2 border border-border outline-none focus:border-bordo mb-2" />
+              {(() => {
+                const salaN = Number(novoReg.sala);
+                const juizExistente = salaN
+                  ? (regLinhas || []).find((l) => l.sala === salaN && l.juiz)?.juiz
+                  : null;
+                if (juizExistente) {
+                  return (
+                    <div className="mb-2 inline-flex items-center gap-1.5 bg-success/15
+                      border border-success/40 text-success rounded-full px-3 py-1
+                      text-[11px] font-semibold">
+                      <IconCheck className="w-3.5 h-3.5" />
+                      Juiz: {juizExistente} (igual ao ballot da Sala {salaN})
+                    </div>
+                  );
+                }
+                if (!salaN) {
+                  return (
+                    <p className="text-[11px] text-muted mb-2">
+                      Escolha o número da sala — se ela já tem registros, o juiz é detectado automaticamente.
+                    </p>
+                  );
+                }
+                return (
+                  <div className="mb-2">
+                    <label className="block text-[10px] uppercase tracking-[0.15em] text-muted mb-1.5">
+                      Juiz que preencheu o ballot *
+                    </label>
+                    <Autocomplete value={novoReg.juiz} options={nomesPessoas}
+                      placeholder="Selecione o juiz da lista..."
+                      onChange={(v) => setNovoReg({ ...novoReg, juiz: v })} />
+                    <p className="text-[10px] text-muted mt-1">
+                      A Sala {salaN} ainda não tem registros nesse treino — selecione o juiz manualmente.
+                    </p>
+                  </div>
+                );
+              })()}
               <Button variant="ghost" onClick={adicionarLinha}>
                 <span className="inline-flex items-center gap-2 justify-center">
                   <IconPlus className="w-4 h-4" />Adicionar registro
