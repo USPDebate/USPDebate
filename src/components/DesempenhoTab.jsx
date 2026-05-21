@@ -5,7 +5,7 @@ import Autocomplete from '@/components/ui/Autocomplete';
 import LineChart from '@/components/ui/LineChart';
 import { IconScale, IconClock, IconUsers } from '@/components/ui/Icons';
 import { getSpeaks } from '@/lib/supabase';
-import { calibrar, ranking, serieDebatedor, evolucaoClube } from '@/lib/speaks-stats';
+import { calibrar, ranking, serieDebatedor, evolucaoClube, componentesConectados } from '@/lib/speaks-stats';
 
 function fmtData(iso) {
   if (!iso) return '';
@@ -25,6 +25,7 @@ export default function DesempenhoTab() {
   }, []);
 
   const cal = useMemo(() => calibrar(speaks || []), [speaks]);
+  const componentes = useMemo(() => componentesConectados(speaks || []), [speaks]);
   const rank = useMemo(() => ranking(cal), [cal]);
   const rankExibido = useMemo(() => {
     const base = rank.slice();
@@ -66,8 +67,37 @@ export default function DesempenhoTab() {
     );
   }
 
+  const desconectados = componentes.length > 1;
+
   return (
     <div className="space-y-3">
+      {desconectados && (
+        <Card style={{ animationDelay: '.02s' }} className="border-l-2 border-l-gold">
+          <SectionLabel icon={IconUsers}>Atenção: grupos desconectados</SectionLabel>
+          <p className="text-[12px] text-muted leading-relaxed">
+            O grafo de avaliações tem <strong className="text-gold">{componentes.length} grupos</strong>
+            {' '}sem juízes em comum. Comparações de nível <em>entre</em> grupos diferentes não são
+            confiáveis — o modelo não consegue separar viés de juiz de nível de debatedor sem
+            sobreposição. Dentro do mesmo grupo, OK.
+          </p>
+          <div className="mt-2 space-y-1.5">
+            {componentes.slice(0, 4).map((g, i) => (
+              <div key={i} className="text-[11px] text-muted bg-surface-2 border border-border
+                rounded-lg px-2.5 py-1.5">
+                <strong className="text-text">Grupo {i + 1}:</strong>{' '}
+                {g.debatedores.length} debatedor(es), {g.juizes.length} juiz(es)
+                {g.debatedores.length <= 5 && g.debatedores[0]?.nome && (
+                  <span className="text-muted/80"> — {g.debatedores.map((d) => d.nome).join(', ')}</span>
+                )}
+              </div>
+            ))}
+            {componentes.length > 4 && (
+              <div className="text-[11px] text-muted">…e mais {componentes.length - 4} grupos.</div>
+            )}
+          </div>
+        </Card>
+      )}
+
       {/* Evolução do clube */}
       <Card style={{ animationDelay: '.05s' }}>
         <SectionLabel icon={IconClock}>Evolução do clube</SectionLabel>
@@ -224,13 +254,26 @@ export default function DesempenhoTab() {
               duro não é penalizado.
             </p>
             <p>
-              Tem também um <strong className="text-text">shrinkage</strong>: com poucas
-              rodadas, o nível é puxado em direção à média do clube (a confiança numa amostra
-              pequena é baixa). Com 10+ rodadas o nível converge para a média ajustada.
+              <strong className="text-text">Shrinkage</strong>: com poucas rodadas, o nível é
+              puxado em direção à média do clube (a confiança numa amostra pequena é baixa).
+              A força do shrinkage (<code className="text-[10px]">K</code>) é estimada dos
+              dados — hoje{' '}
+              <strong className="text-text">K ≈ {cal.K ? cal.K.toFixed(1) : '—'}</strong>.
+            </p>
+            <p>
+              <strong className="text-text">± erro padrão</strong> mostra a incerteza da
+              estimativa. Quanto mais rodadas, menor o erro. Dois níveis cujos intervalos se
+              sobrepõem (ex.: 76 ± 2 vs 77 ± 2) não devem ser tratados como diferentes.
+            </p>
+            <p>
+              <strong className="text-text">Ponderação temporal</strong>: notas recentes pesam
+              mais (meia-vida de {cal.halfLifeDias ?? 'sem decaimento'} dias) — captura
+              evolução ao longo da temporada.
             </p>
             <p className="text-[10px] italic">
               Tecnicamente: modelo aditivo de dois fatores cruzados com shrinkage de Bayes
-              empírico (K=3).
+              empírico, K estimado dos componentes de variância, pesos por decaimento
+              exponencial.
             </p>
           </div>
         )}
@@ -238,6 +281,7 @@ export default function DesempenhoTab() {
         <div className="space-y-1">
           {rankExibido.map((d, i) => {
             const valor = modoRank === 'sps' ? d.mediaCrua : d.nivel;
+            const se = modoRank === 'nivel' ? d.seNivel : 0;
             const topPct = Math.max(1, Math.round((100 * (i + 1)) / rankExibido.length));
             return (
               <button
@@ -248,11 +292,16 @@ export default function DesempenhoTab() {
               >
                 <span className="w-6 text-center font-display text-sm text-muted">{i + 1}</span>
                 <span className="flex-1 text-[13px] font-semibold truncate">{d.nome}</span>
-                <span className="text-[11px] text-muted">{d.rodadas} rod.</span>
-                <span className="font-display text-base text-bordo w-12 text-right">
-                  {valor.toFixed(1)}
-                </span>
-                <span className="text-[10px] text-gold w-16 text-right">Top {topPct}%</span>
+                <span className="text-[11px] text-muted whitespace-nowrap">{d.rodadas} rod.</span>
+                <div className="w-14 text-right">
+                  <div className="font-display text-base text-bordo leading-none">
+                    {valor.toFixed(1)}
+                  </div>
+                  {modoRank === 'nivel' && se > 0 && (
+                    <div className="text-[9px] text-muted mt-0.5">±{se.toFixed(1)}</div>
+                  )}
+                </div>
+                <span className="text-[10px] text-gold w-14 text-right">Top {topPct}%</span>
               </button>
             );
           })}
