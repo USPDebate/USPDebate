@@ -343,8 +343,8 @@ export default function TraineesArea({ senha }) {
                           const m = metricasDe(t.pessoaId);
                           return (
                             <tr key={t.pessoaId}>
-                              <td className="px-2 py-1 font-semibold whitespace-nowrap
-                                sticky left-0 bg-surface">{t.nome}</td>
+                              <td className="px-2 py-1 font-semibold sticky left-0 bg-surface
+                                max-w-[110px] sm:max-w-none truncate" title={t.nome}>{t.nome}</td>
                               {semanas.map((s) => {
                                 const pres = presenteNa(t.pessoaId, s);
                                 const feito = formacoes.has(t.pessoaId + '-' + s.id);

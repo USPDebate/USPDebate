@@ -418,6 +418,58 @@ export async function apagarSemana(id) {
   return { ok: true };
 }
 
+// Apaga o draw do dia (rascunho ou publicado).
+export async function apagarDrawDia({ data, senha }) {
+  const { error } = await sb.rpc('apagar_draw_dia', {
+    p_senha: senha, p_data: data,
+  });
+  if (error) return { ok: false, erro: error.message };
+  return { ok: true };
+}
+
+// Lista todos os speaks de uma data, com nome da pessoa.
+export async function getSpeaksDeData(data) {
+  const temp = await temporadaAtiva();
+  if (!temp) return [];
+  const [sp, pess] = await Promise.all([
+    sb.from('speaker_points')
+      .select('id,pessoa_id,sala,posicao,speaks,juiz')
+      .eq('temporada_id', temp.id).eq('data', data)
+      .order('sala').order('posicao'),
+    sb.from('pessoas').select('id,nome'),
+  ]);
+  if (sp.error || !sp.data) return [];
+  const nomeDe = new Map((pess.data || []).map((p) => [p.id, p.nome]));
+  return sp.data.map((r) => ({
+    id: r.id, pessoaId: r.pessoa_id, nome: nomeDe.get(r.pessoa_id) || '',
+    sala: r.sala, posicao: r.posicao, speaks: Number(r.speaks), juiz: r.juiz || '',
+  }));
+}
+
+export async function editarSpeak({ id, pessoaId, speaks, senha }) {
+  const { error } = await sb.rpc('editar_speak', {
+    p_senha: senha, p_id: id,
+    p_pessoa_id: pessoaId ?? null, p_speaks: speaks ?? null,
+  });
+  if (error) return { ok: false, erro: error.message };
+  return { ok: true };
+}
+
+export async function apagarSpeak({ id, senha }) {
+  const { error } = await sb.rpc('apagar_speak', { p_senha: senha, p_id: id });
+  if (error) return { ok: false, erro: error.message };
+  return { ok: true };
+}
+
+export async function inserirSpeak({ pessoaId, data, sala, posicao, speaks, juiz, senha }) {
+  const { error } = await sb.rpc('inserir_speak', {
+    p_senha: senha, p_pessoa_id: pessoaId, p_data: data,
+    p_sala: sala, p_posicao: posicao, p_speaks: speaks, p_juiz: juiz || null,
+  });
+  if (error) return { ok: false, erro: error.message };
+  return { ok: true };
+}
+
 // Correção manual de presença num treino (admin).
 export async function marcarPresenca({ pessoaId, data, presente, senha }) {
   const { error } = await sb.rpc('marcar_presenca', {

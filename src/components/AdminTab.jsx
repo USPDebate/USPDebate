@@ -12,6 +12,7 @@ import {
   verificarSenha, listarPresentesHoje, listarPessoas, getDrawHoje,
   gerarDraw as apiGerarDraw, salvarDraw, apagarPresenca, mesclarPessoas, apagarPessoa,
   getSpeaks, listarPresentes, getDatasPresenca, getDatasSpeaks, apagarSpeaksData, norm,
+  apagarDrawDia, getSpeaksDeData, editarSpeak, apagarSpeak, inserirSpeak,
 } from '@/lib/supabase';
 import { calibrar, analiseJuizes } from '@/lib/speaks-stats';
 import { toast } from '@/lib/toast';
@@ -24,6 +25,13 @@ function fmtData(iso) {
   const [a, m, d] = iso.split('-');
   return `${d}/${m}/${a}`;
 }
+
+function hojeISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+const POSICOES = ['OG', 'OO', 'CG', 'CO'];
 
 export default function AdminTab() {
   const [logado, setLogado] = useState(false);
@@ -55,6 +63,10 @@ export default function AdminTab() {
   const [listaData, setListaData] = useState(null);
   const [listaPresentes, setListaPresentes] = useState(null);
   const [datasSpeaks, setDatasSpeaks] = useState(null);
+  const [regData, setRegData] = useState(null);     // treino selecionado para correção
+  const [regLinhas, setRegLinhas] = useState(null);
+  const [regEditNome, setRegEditNome] = useState(null); // id da linha em edição de nome
+  const [novoReg, setNovoReg] = useState({ nome: '', sala: '', posicao: 'OG', speaks: '', juiz: '' });
 
   const nomesPessoas = pessoas.map((p) => p.nome);
   const nomesPresentes = (presentes || []).filter((p) => !p.naoDebate).map((p) => p.nome);
@@ -152,12 +164,72 @@ export default function AdminTab() {
     setDatasSpeaks(null);
     getDatasSpeaks().then((d) => setDatasSpeaks(d || [])).catch(() => setDatasSpeaks([]));
   }
+  function carregarLinhasReg(d) {
+    setRegLinhas(null);
+    getSpeaksDeData(d).then((r) => setRegLinhas(r || [])).catch(() => setRegLinhas([]));
+  }
+  function selecionarTreinoReg(d) {
+    setRegData(d); setRegEditNome(null);
+    setNovoReg({ nome: '', sala: '', posicao: 'OG', speaks: '', juiz: '' });
+    carregarLinhasReg(d);
+  }
+  async function alterarNomeLinha(linha, nomeNovo) {
+    const pessoa = pessoas.find((p) => norm(p.nome) === norm(nomeNovo));
+    if (!pessoa) { toast('error', 'Selecione um nome da lista.'); return; }
+    const res = await editarSpeak({ id: linha.id, pessoaId: pessoa.id, senha });
+    if (res.ok) { toast('success', 'Nome alterado.'); setRegEditNome(null); carregarLinhasReg(regData); }
+    else toast('error', res.erro);
+  }
+  async function alterarNotaLinha(linha, novaNota) {
+    const v = Number(novaNota);
+    if (isNaN(v) || v < 0 || v > 100) { toast('error', 'Nota inválida (0–100).'); return; }
+    if (v === linha.speaks) return;
+    const res = await editarSpeak({ id: linha.id, speaks: v, senha });
+    if (res.ok) { toast('success', 'Nota alterada.'); carregarLinhasReg(regData); }
+    else toast('error', res.erro);
+  }
+  async function apagarLinha(linha) {
+    if (!window.confirm(`Apagar o registro de ${linha.nome} (Sala ${linha.sala} ${linha.posicao})?`)) return;
+    const res = await apagarSpeak({ id: linha.id, senha });
+    if (res.ok) { toast('success', 'Registro apagado.'); carregarLinhasReg(regData); }
+    else toast('error', res.erro);
+  }
+  async function adicionarLinha() {
+    const pessoa = pessoas.find((p) => norm(p.nome) === norm(novoReg.nome));
+    if (!pessoa) { toast('error', 'Escolha a pessoa da lista.'); return; }
+    const sala = Number(novoReg.sala);
+    if (!sala || sala < 1) { toast('error', 'Número de sala inválido.'); return; }
+    const speaks = Number(novoReg.speaks);
+    if (isNaN(speaks) || speaks < 0 || speaks > 100) { toast('error', 'Nota inválida (0–100).'); return; }
+    const res = await inserirSpeak({
+      pessoaId: pessoa.id, data: regData, sala, posicao: novoReg.posicao,
+      speaks, juiz: novoReg.juiz.trim(), senha,
+    });
+    if (res.ok) {
+      toast('success', 'Registro adicionado.');
+      setNovoReg({ nome: '', sala: '', posicao: 'OG', speaks: '', juiz: '' });
+      carregarLinhasReg(regData);
+    } else toast('error', res.erro);
+  }
+
+  async function apagarDrawHoje() {
+    if (!window.confirm('Apagar o draw de hoje? Isso remove rascunho e publicação — útil para limpar testes. Não dá para desfazer.')) return;
+    const res = await apagarDrawDia({ data: hojeISO(), senha });
+    if (res.ok) {
+      setDrawAtual(null);
+      setJuizes([]);
+      try { localStorage.removeItem(chaveJuizes()); } catch (e) {}
+      setAlertaDraw({ tipo: 'success', msg: 'Draw de hoje apagado.' });
+    } else setAlertaDraw({ tipo: 'error', msg: res.erro });
+  }
+
   async function apagarSpeaksFn(data) {
     if (!window.confirm(
       `Apagar TODOS os speaker points do treino de ${fmtData(data)}? Não dá para desfazer.`)) return;
     const res = await apagarSpeaksData({ data, senha });
     if (res.ok) {
       toast('success', 'Speaker points do treino apagados.');
+      if (regData === data) { setRegData(null); setRegLinhas(null); }
       getDatasSpeaks().then((d) => setDatasSpeaks(d || []));
     } else toast('error', res.erro);
   }
@@ -466,6 +538,18 @@ export default function AdminTab() {
                   {drawAtual.publicado ? 'Publicado' : 'Publicar'}
                 </Button>
               </div>
+              <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-3">
+                <span className="text-[11px] text-muted">
+                  Limpa rascunho/publicação de hoje (útil para descartar testes).
+                </span>
+                <button
+                  onClick={apagarDrawHoje}
+                  className="text-[11px] text-danger border border-danger/40 rounded-lg px-3 py-1.5
+                    hover:bg-danger/10 transition whitespace-nowrap"
+                >
+                  Apagar draw de hoje
+                </button>
+              </div>
             </div>
           )}
         </Card>
@@ -688,9 +772,10 @@ export default function AdminTab() {
       </Card>
 
       <Card style={{ animationDelay: '.15s' }}>
-        <SectionLabel icon={IconScale}>Apagar speaker points de um treino</SectionLabel>
+        <SectionLabel icon={IconScale}>Editar registros de speaks</SectionLabel>
         <p className="text-xs text-muted mb-3">
-          Apaga todas as notas de um treino — útil para limpar testes. As notas somem do dashboard.
+          Corrija notas, troque nomes mal preenchidos ou re-adicione registros apagados.
+          Escolha um treino para ver os registros.
         </p>
         {datasSpeaks === null && <div className="skeleton h-11 rounded-lg" />}
         {datasSpeaks && datasSpeaks.length === 0 && (
@@ -699,12 +784,109 @@ export default function AdminTab() {
         {datasSpeaks && datasSpeaks.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {datasSpeaks.map((d) => (
-              <button key={d} onClick={() => apagarSpeaksFn(d)}
-                className="text-[12px] text-danger border border-danger/40 rounded-lg px-3 py-2
-                  hover:bg-danger/10 transition">
-                Apagar {fmtData(d)}
+              <button key={d} onClick={() => selecionarTreinoReg(d)}
+                className={`text-[12px] font-semibold border rounded-lg px-3 py-2 transition
+                  ${regData === d
+                    ? 'bg-gradient-to-br from-bordo to-bordo-soft text-white border-bordo'
+                    : 'bg-surface-2 text-muted border-border hover:border-bordo/60'}`}>
+                {fmtData(d)}
               </button>
             ))}
+          </div>
+        )}
+
+        {regData && (
+          <div className="mt-4 animate-fade-up">
+            {regLinhas === null && <div className="skeleton h-24 rounded-xl2" />}
+            {regLinhas && regLinhas.length === 0 && (
+              <p className="text-[12px] text-muted py-2">
+                Nenhum registro nesse treino. Use o formulário abaixo para adicionar.
+              </p>
+            )}
+            {regLinhas && regLinhas.length > 0 && (
+              <div className="space-y-3">
+                {Array.from(new Set(regLinhas.map((l) => l.sala))).sort((a, b) => a - b).map((sala) => (
+                  <div key={sala} className="border border-border rounded-xl2 overflow-hidden bg-surface-2">
+                    <div className="px-3 py-2 bg-[#120c0e] text-[11px] uppercase tracking-wider font-semibold">
+                      Sala {sala}
+                    </div>
+                    {regLinhas.filter((l) => l.sala === sala).map((l) => (
+                      <div key={l.id}
+                        className="grid grid-cols-[44px_1fr_70px_auto] gap-2 items-center
+                          px-2.5 py-2 border-t border-border text-[12px]">
+                        <span className="text-[10px] font-bold text-center py-1 rounded border
+                          bg-surface text-muted border-border">
+                          {l.posicao || '—'}
+                        </span>
+                        {regEditNome === l.id ? (
+                          <Autocomplete
+                            value={l.nome} options={nomesPessoas}
+                            placeholder="Trocar nome..."
+                            onChange={(v, esc) => { if (esc) alterarNomeLinha(l, v); }}
+                          />
+                        ) : (
+                          <button onClick={() => setRegEditNome(l.id)}
+                            className="text-left font-semibold truncate hover:text-bordo">
+                            {l.nome || <span className="text-danger">(sem cadastro)</span>}
+                          </button>
+                        )}
+                        <input
+                          type="number" min={0} max={100} defaultValue={l.speaks}
+                          onBlur={(e) => alterarNotaLinha(l, e.target.value)}
+                          className="w-full px-2 py-1.5 rounded-lg text-center text-[13px] font-bold
+                            bg-[#ece4df] text-[#1a1212] border border-border outline-none focus:border-bordo"
+                        />
+                        <button onClick={() => apagarLinha(l)} className="text-danger p-1">
+                          <IconTrash className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Adicionar registro */}
+            <div className="mt-4 pt-3 border-t border-border">
+              <div className="text-[10px] uppercase tracking-[0.15em] text-muted mb-2">
+                Adicionar registro
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_70px_80px_70px] gap-2 mb-2">
+                <Autocomplete value={novoReg.nome} options={nomesPessoas}
+                  placeholder="Pessoa..."
+                  onChange={(v) => setNovoReg({ ...novoReg, nome: v })} />
+                <input type="number" min={1} placeholder="Sala" value={novoReg.sala}
+                  onChange={(e) => setNovoReg({ ...novoReg, sala: e.target.value })}
+                  className="px-2 py-2 rounded-lg text-[12px] text-center bg-surface-2 border border-border outline-none focus:border-bordo" />
+                <select value={novoReg.posicao}
+                  onChange={(e) => setNovoReg({ ...novoReg, posicao: e.target.value })}
+                  className="px-2 py-2 rounded-lg text-[12px] bg-surface-2 border border-border outline-none focus:border-bordo">
+                  {POSICOES.map((p) => <option key={p}>{p}</option>)}
+                </select>
+                <input type="number" min={0} max={100} placeholder="Nota" value={novoReg.speaks}
+                  onChange={(e) => setNovoReg({ ...novoReg, speaks: e.target.value })}
+                  className="px-2 py-2 rounded-lg text-[12px] text-center bg-surface-2 border border-border outline-none focus:border-bordo" />
+              </div>
+              <input type="text" placeholder="Juiz (opcional)" value={novoReg.juiz}
+                onChange={(e) => setNovoReg({ ...novoReg, juiz: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg text-[12px] bg-surface-2 border border-border outline-none focus:border-bordo mb-2" />
+              <Button variant="ghost" onClick={adicionarLinha}>
+                <span className="inline-flex items-center gap-2 justify-center">
+                  <IconPlus className="w-4 h-4" />Adicionar registro
+                </span>
+              </Button>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-3">
+              <span className="text-[11px] text-muted">Apaga TODAS as notas deste treino.</span>
+              <button
+                onClick={() => apagarSpeaksFn(regData)}
+                className="text-[11px] text-danger border border-danger/40 rounded-lg px-3 py-1.5
+                  hover:bg-danger/10 transition whitespace-nowrap"
+              >
+                Apagar tudo de {fmtData(regData)}
+              </button>
+            </div>
           </div>
         )}
       </Card>

@@ -162,16 +162,20 @@ export default function SpeaksDoDraw() {
             Quem está submetendo? (Chair) *
           </label>
           <div className="flex flex-wrap gap-1.5">
-            {panel.map((j) => (
-              <button
-                key={j}
-                type="button"
-                onClick={() => { setChair(j); setOutroAtivo(false); }}
-                className={tagCls(!outroAtivo && chair === j)}
-              >
-                {j}
-              </button>
-            ))}
+            {panel.map((j) => {
+              const ativo = !outroAtivo && chair === j;
+              return (
+                <button
+                  key={j}
+                  type="button"
+                  onClick={() => { setChair(j); setOutroAtivo(false); }}
+                  className={tagCls(ativo)}
+                >
+                  {ativo && <IconCheck className="w-3.5 h-3.5 inline mr-1" />}
+                  {j}
+                </button>
+              );
+            })}
             <button
               type="button"
               onClick={() => { setOutroAtivo(true); setChair(''); }}
@@ -193,6 +197,13 @@ export default function SpeaksDoDraw() {
                 placeholder="Digite o nome do Chair..."
                 onChange={(v) => setChair(v)}
               />
+            </div>
+          )}
+          {chair.trim() && (
+            <div className="mt-2 inline-flex items-center gap-1.5 bg-success/15 border border-success/40
+              text-success rounded-full px-3 py-1 text-[11px] font-semibold">
+              <IconCheck className="w-3.5 h-3.5" />
+              Chair: {chair.trim()}
             </div>
           )}
 

@@ -18,6 +18,8 @@ declare
   v_conteudo jsonb;
   v_salas    jsonb;
   v_num      int;
+  v_nome     text;
+  v_pid      bigint;
 begin
   select id into v_temp from temporadas where ativa limit 1;
   if v_temp is null then raise exception 'Nenhuma temporada ativa'; end if;
@@ -40,6 +42,23 @@ begin
   values (v_temp, p_data, v_conteudo, true)
   on conflict (temporada_id, data)
   do update set conteudo = excluded.conteudo, publicado = true;
+
+  -- Marca presença automaticamente para debatedores e juízes da sala.
+  for v_nome in
+    select x from jsonb_array_elements(coalesce(p_sala->'posicoes', '[]'::jsonb)) pos,
+      lateral (values (pos->>'p1'), (pos->>'p2')) v(x)
+    where x is not null and btrim(x) <> '' and lower(x) <> 'sem par'
+    union
+    select jsonb_array_elements_text(coalesce(p_sala->'juizes', '[]'::jsonb))
+  loop
+    select id into v_pid from pessoas
+     where nome_norm = lower(unaccent(v_nome)) limit 1;
+    if v_pid is not null then
+      insert into presencas (temporada_id, pessoa_id, data, tipo)
+      values (v_temp, v_pid, p_data, 'ps')
+      on conflict (temporada_id, pessoa_id, data) do nothing;
+    end if;
+  end loop;
 end;
 $$;
 grant execute on function adicionar_sala_manual(date, jsonb) to anon;
