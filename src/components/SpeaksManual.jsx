@@ -29,6 +29,8 @@ export default function SpeaksManual() {
   const [salvando, setSalvando] = useState(false);
   const [alerta, setAlerta] = useState(null);
   const [feitas, setFeitas] = useState(new Map()); // sala -> juiz
+  const [erros, setErros] = useState({});            // { [key]: 'mensagem' }
+  const [juizErro, setJuizErro] = useState(null);
 
   useEffect(() => {
     listarPessoas().then((p) => setPessoas(p || [])).catch(() => {});
@@ -38,29 +40,46 @@ export default function SpeaksManual() {
   }, []);
 
   const nomesPessoas = pessoas.map((p) => p.nome);
-  const upd = (k, patch) => setDados((d) => ({ ...d, [k]: { ...d[k], ...patch } }));
+  const upd = (k, patch) => {
+    setDados((d) => ({ ...d, [k]: { ...d[k], ...patch } }));
+    setErros((e) => { if (!e[k]) return e; const c = { ...e }; delete c[k]; return c; });
+  };
 
   async function salvar() {
     const juizNome = juiz.trim();
-    if (!juizNome) { setAlerta({ tipo: 'error', msg: 'Informe seu nome (juiz da sala).' }); return; }
-    if (modoNovoJuiz && juizNome.split(/\s+/).filter((x) => x.length >= 2).length < 2) {
-      setAlerta({ tipo: 'error', msg: 'Digite seu nome e sobrenome completos.' }); return;
-    }
+    const novosErros = {};
+    let jErr = null;
+    if (!juizNome) jErr = 'Informe seu nome.';
+    else if (modoNovoJuiz && juizNome.split(/\s+/).filter((x) => x.length >= 2).length < 2)
+      jErr = 'Digite nome e sobrenome completos.';
+    else if (!modoNovoJuiz && !pessoas.some((p) => p.nome === juizNome))
+      jErr = 'Selecione um nome da lista — ou clique em "Não estou na lista".';
+
     for (const k of KEYS) {
       const d = dados[k];
-      if (!d.nome.trim()) {
-        setAlerta({ tipo: 'error', msg: 'Preencha o nome de todos os 8 debatedores.' }); return;
-      }
+      if (!d.nome.trim()) { novosErros[k] = 'Preencha o nome.'; continue; }
       if (d.novo && d.nome.trim().split(/\s+/).filter((x) => x.length >= 2).length < 2) {
-        setAlerta({ tipo: 'error', msg: `Digite nome e sobrenome completos de ${d.nome}.` }); return;
+        novosErros[k] = 'Digite nome e sobrenome completos.'; continue;
       }
       if (!d.novo && !d.ok) {
-        setAlerta({ tipo: 'error', msg: `Selecione "${d.nome}" da lista — ou marque "novo".` }); return;
+        novosErros[k] = 'Selecione um nome da lista — ou clique em "primeira vez".'; continue;
       }
       const v = Number(d.speak);
       if (d.speak === '' || isNaN(v) || v < 50 || v > 100) {
-        setAlerta({ tipo: 'error', msg: `Nota inválida para ${d.nome} — use 50 a 100.` }); return;
+        novosErros[k] = 'Nota inválida (use 50 a 100).'; continue;
       }
+    }
+
+    setJuizErro(jErr);
+    setErros(novosErros);
+
+    if (jErr || Object.keys(novosErros).length) {
+      setAlerta({ tipo: 'error', msg: 'Tem campo pra corrigir — destaquei em vermelho abaixo.' });
+      setTimeout(() => {
+        const el = document.querySelector('[data-erro="true"]');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 60);
+      return;
     }
 
     if (feitas.has(salaNum)) {
@@ -108,47 +127,61 @@ export default function SpeaksManual() {
 
   function linhaDebatedor(k, rotulo) {
     const d = dados[k];
+    const erro = erros[k];
     const fora = d.speak !== '' &&
       (isNaN(Number(d.speak)) || Number(d.speak) < 50 || Number(d.speak) > 100);
     return (
-      <div className="flex items-start gap-2">
-        <div className="flex-1">
-          {d.novo ? (
+      <div
+        data-erro={erro ? 'true' : undefined}
+        className={`rounded-lg p-2 transition border ${erro
+          ? 'border-danger ring-2 ring-danger/30 bg-danger/5'
+          : 'border-transparent'}`}
+      >
+        <div className="flex items-start gap-2">
+          <div className="flex-1">
+            {d.novo ? (
+              <input
+                type="text"
+                value={d.nome}
+                onChange={(e) => upd(k, { nome: e.target.value })}
+                placeholder={`${rotulo} — nome e sobrenome`}
+                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none focus:border-bordo"
+              />
+            ) : (
+              <Autocomplete
+                value={d.nome}
+                options={nomesPessoas}
+                placeholder={`${rotulo} — selecione o nome`}
+                onChange={(v, esc) => upd(k, { nome: v, ok: esc })}
+              />
+            )}
+            <button
+              type="button"
+              onClick={() => upd(k, { novo: !d.novo, nome: '', ok: false })}
+              className={`mt-1.5 text-[10px] font-semibold rounded-full px-2.5 py-1 border transition
+                ${d.novo
+                  ? 'text-muted border-border hover:border-bordo/60 hover:text-bordo'
+                  : 'text-bordo border-bordo/40 bg-bordo/5 hover:bg-bordo/15'}`}
+            >
+              {d.novo ? '← Escolher da lista' : '+ Primeira vez (cadastrar)'}
+            </button>
+          </div>
+          <div className="flex flex-col items-end gap-0.5">
             <input
-              type="text"
-              value={d.nome}
-              onChange={(e) => upd(k, { nome: e.target.value })}
-              placeholder={`${rotulo} — nome e sobrenome`}
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none focus:border-bordo"
+              type="number" inputMode="numeric" min={50} max={100}
+              value={d.speak}
+              onChange={(e) => upd(k, { speak: e.target.value })}
+              placeholder="—"
+              className={`w-16 px-1 py-2.5 rounded-lg text-center text-base font-bold outline-none
+                bg-[#ece4df] text-[#1a1212] border focus:border-bordo
+                ${fora ? 'border-danger ring-2 ring-danger/40' : 'border-border'}`}
             />
-          ) : (
-            <Autocomplete
-              value={d.nome}
-              options={nomesPessoas}
-              placeholder={`${rotulo} — selecione o nome`}
-              onChange={(v, esc) => upd(k, { nome: v, ok: esc })}
-            />
-          )}
-          <button
-            type="button"
-            onClick={() => upd(k, { novo: !d.novo, nome: '', ok: false })}
-            className="mt-1 text-[10px] text-bordo hover:underline"
-          >
-            {d.novo ? '← escolher da lista' : 'primeira vez (digitar nome novo)'}
-          </button>
+            {fora && <span className="text-[9px] text-danger font-semibold">50–100</span>}
+          </div>
         </div>
-        <div className="flex flex-col items-end gap-0.5">
-          <input
-            type="number" inputMode="numeric" min={50} max={100}
-            value={d.speak}
-            onChange={(e) => upd(k, { speak: e.target.value })}
-            placeholder="—"
-            className={`w-16 px-1 py-2.5 rounded-lg text-center text-base font-bold outline-none
-              bg-[#ece4df] text-[#1a1212] border focus:border-bordo
-              ${fora ? 'border-danger ring-2 ring-danger/40' : 'border-border'}`}
-          />
-          {fora && <span className="text-[9px] text-danger font-semibold">50–100</span>}
-        </div>
+        {erro && (
+          <p className="text-[11px] text-danger font-semibold mt-1.5">{erro}</p>
+        )}
       </div>
     );
   }
@@ -162,7 +195,12 @@ export default function SpeaksManual() {
       </p>
 
       {/* Juiz */}
-      <div className="mb-4">
+      <div
+        data-erro={juizErro ? 'true' : undefined}
+        className={`mb-4 rounded-lg p-2 transition border ${juizErro
+          ? 'border-danger ring-2 ring-danger/30 bg-danger/5'
+          : 'border-transparent'}`}
+      >
         <label className="block text-[10px] uppercase tracking-[0.15em] text-muted mb-2">
           Seu nome (juiz da sala) *
         </label>
@@ -170,22 +208,32 @@ export default function SpeaksManual() {
           <>
             <input
               type="text" value={juiz}
-              onChange={(e) => setJuiz(e.target.value)}
+              onChange={(e) => { setJuiz(e.target.value); setJuizErro(null); }}
               placeholder="Digite seu nome e sobrenome completos..."
               className="w-full px-3.5 py-3 rounded-lg text-base outline-none focus:border-bordo"
             />
-            <button type="button" onClick={() => { setModoNovoJuiz(false); setJuiz(''); }}
-              className="mt-1.5 text-[11px] text-bordo hover:underline">← Voltar para a lista</button>
+            <button type="button"
+              onClick={() => { setModoNovoJuiz(false); setJuiz(''); setJuizErro(null); }}
+              className="mt-1.5 text-[11px] font-semibold rounded-full px-2.5 py-1 border
+                text-muted border-border hover:border-bordo/60 hover:text-bordo transition">
+              ← Escolher da lista
+            </button>
           </>
         ) : (
           <>
             <Autocomplete value={juiz} options={nomesPessoas}
-              placeholder="Digite e selecione seu nome..." onChange={(v) => setJuiz(v)} />
-            <button type="button" onClick={() => { setModoNovoJuiz(true); setJuiz(''); }}
-              className="mt-1.5 text-[11px] text-bordo hover:underline">
-              Não estou na lista — é minha primeira vez
+              placeholder="Digite e selecione seu nome..."
+              onChange={(v) => { setJuiz(v); setJuizErro(null); }} />
+            <button type="button"
+              onClick={() => { setModoNovoJuiz(true); setJuiz(''); setJuizErro(null); }}
+              className="mt-1.5 text-[11px] font-semibold rounded-full px-2.5 py-1 border
+                text-bordo border-bordo/40 bg-bordo/5 hover:bg-bordo/15 transition">
+              + Não estou na lista (cadastrar)
             </button>
           </>
+        )}
+        {juizErro && (
+          <p className="text-[11px] text-danger font-semibold mt-1.5">{juizErro}</p>
         )}
       </div>
 
