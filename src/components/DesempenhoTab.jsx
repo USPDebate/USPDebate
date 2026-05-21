@@ -17,6 +17,8 @@ export default function DesempenhoTab() {
   const [speaks, setSpeaks] = useState(null);
   const [nomeBusca, setNomeBusca] = useState('');
   const [selecionado, setSelecionado] = useState(null); // pessoaId
+  const [modoRank, setModoRank] = useState('nivel');    // 'nivel' | 'sps'
+  const [explicarNivel, setExplicarNivel] = useState(false);
 
   useEffect(() => {
     getSpeaks().then((s) => setSpeaks(s || [])).catch(() => setSpeaks([]));
@@ -24,6 +26,11 @@ export default function DesempenhoTab() {
 
   const cal = useMemo(() => calibrar(speaks || []), [speaks]);
   const rank = useMemo(() => ranking(cal), [cal]);
+  const rankExibido = useMemo(() => {
+    const base = rank.slice();
+    if (modoRank === 'sps') base.sort((a, b) => b.mediaCrua - a.mediaCrua);
+    return base;
+  }, [rank, modoRank]);
   const clube = useMemo(() => evolucaoClube(cal), [cal]);
 
   const debSel = selecionado ? rank.find((d) => d.pessoaId === selecionado) : null;
@@ -168,26 +175,87 @@ export default function DesempenhoTab() {
       {/* Ranking */}
       <Card style={{ animationDelay: '.15s' }}>
         <SectionLabel icon={IconUsers}>Ranking da temporada</SectionLabel>
-        <p className="text-[11px] text-muted mb-3">
-          Por nível ajustado — limpo do viés dos juízes.
-        </p>
+
+        {/* Toggle Nível / SPs */}
+        <div className="flex gap-1.5 mb-2">
+          {[
+            { id: 'nivel', label: 'Nível', sub: 'calibrado' },
+            { id: 'sps', label: 'SPs', sub: 'média crua' },
+          ].map((opt) => {
+            const ativo = modoRank === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setModoRank(opt.id)}
+                className={`flex-1 rounded-xl text-[12px] font-semibold border transition py-2
+                  ${ativo
+                    ? 'bg-gradient-to-br from-bordo to-bordo-soft text-white border-bordo'
+                    : 'bg-surface-2 text-muted border-border hover:border-bordo/60'}`}
+              >
+                <div>{opt.label}</div>
+                <div className={`text-[9px] uppercase tracking-wider mt-0.5
+                  ${ativo ? 'text-white/80' : 'text-muted'}`}>{opt.sub}</div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Explicação do Nível */}
+        <button
+          type="button"
+          onClick={() => setExplicarNivel((x) => !x)}
+          className="text-[11px] text-bordo hover:underline mb-2"
+        >
+          {explicarNivel ? '▾ esconder explicação' : '▸ o que é Nível? como é calculado?'}
+        </button>
+        {explicarNivel && (
+          <div className="text-[11px] text-muted bg-surface-2 border border-border rounded-lg
+            p-3 mb-3 space-y-1.5 leading-relaxed">
+            <p>
+              <strong className="text-text">SPs</strong> é a média crua das notas que a pessoa
+              recebeu — soma e divide pela quantidade. Simples e direto.
+            </p>
+            <p>
+              <strong className="text-text">Nível</strong> é uma estimativa calibrada do skill
+              "verdadeiro". O modelo trata cada nota como{' '}
+              <code className="text-[10px]">nível_do_debatedor + viés_do_juiz + erro</code> e
+              estima as duas coisas iterativamente — assim quem foi julgado por um juiz mais
+              duro não é penalizado.
+            </p>
+            <p>
+              Tem também um <strong className="text-text">shrinkage</strong>: com poucas
+              rodadas, o nível é puxado em direção à média do clube (a confiança numa amostra
+              pequena é baixa). Com 10+ rodadas o nível converge para a média ajustada.
+            </p>
+            <p className="text-[10px] italic">
+              Tecnicamente: modelo aditivo de dois fatores cruzados com shrinkage de Bayes
+              empírico (K=3).
+            </p>
+          </div>
+        )}
+
         <div className="space-y-1">
-          {rank.map((d, i) => (
-            <button
-              key={d.pessoaId}
-              onClick={() => escolher(d.nome)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-surface-2
-                border border-border text-left transition hover:border-bordo/60"
-            >
-              <span className="w-6 text-center font-display text-sm text-muted">{i + 1}</span>
-              <span className="flex-1 text-[13px] font-semibold">{d.nome}</span>
-              <span className="text-[11px] text-muted">{d.rodadas} rod.</span>
-              <span className="font-display text-base text-bordo w-12 text-right">
-                {d.nivel.toFixed(1)}
-              </span>
-              <span className="text-[10px] text-gold w-16 text-right">Top {d.topPct}%</span>
-            </button>
-          ))}
+          {rankExibido.map((d, i) => {
+            const valor = modoRank === 'sps' ? d.mediaCrua : d.nivel;
+            const topPct = Math.max(1, Math.round((100 * (i + 1)) / rankExibido.length));
+            return (
+              <button
+                key={d.pessoaId}
+                onClick={() => escolher(d.nome)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-surface-2
+                  border border-border text-left transition hover:border-bordo/60"
+              >
+                <span className="w-6 text-center font-display text-sm text-muted">{i + 1}</span>
+                <span className="flex-1 text-[13px] font-semibold truncate">{d.nome}</span>
+                <span className="text-[11px] text-muted">{d.rodadas} rod.</span>
+                <span className="font-display text-base text-bordo w-12 text-right">
+                  {valor.toFixed(1)}
+                </span>
+                <span className="text-[10px] text-gold w-16 text-right">Top {topPct}%</span>
+              </button>
+            );
+          })}
         </div>
       </Card>
     </div>
