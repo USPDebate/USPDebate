@@ -133,8 +133,8 @@ export default function SpeaksManual() {
     return (
       <div
         data-erro={erro ? 'true' : undefined}
-        className={`rounded-lg p-2 transition border ${erro
-          ? 'border-danger ring-2 ring-danger/30 bg-danger/5'
+        className={`rounded-lg p-2 transition border-2 scroll-mt-24 ${erro
+          ? 'border-danger ring-2 ring-[#e0625a66] bg-[#e0625a1a]'
           : 'border-transparent'}`}
       >
         <div className="flex items-start gap-2">
@@ -174,7 +174,7 @@ export default function SpeaksManual() {
               placeholder="—"
               className={`w-16 px-1 py-2.5 rounded-lg text-center text-base font-bold outline-none
                 bg-[#ece4df] text-[#1a1212] border focus:border-bordo
-                ${fora ? 'border-danger ring-2 ring-danger/40' : 'border-border'}`}
+                ${fora ? 'border-danger ring-2 ring-[#e0625a66]' : 'border-border'}`}
             />
             {fora && <span className="text-[9px] text-danger font-semibold">50–100</span>}
           </div>
@@ -197,8 +197,8 @@ export default function SpeaksManual() {
       {/* Juiz */}
       <div
         data-erro={juizErro ? 'true' : undefined}
-        className={`mb-4 rounded-lg p-2 transition border ${juizErro
-          ? 'border-danger ring-2 ring-danger/30 bg-danger/5'
+        className={`mb-4 rounded-lg p-2 transition border-2 scroll-mt-24 ${juizErro
+          ? 'border-danger ring-2 ring-[#e0625a66] bg-[#e0625a1a]'
           : 'border-transparent'}`}
       >
         <label className="block text-[10px] uppercase tracking-[0.15em] text-muted mb-2">
