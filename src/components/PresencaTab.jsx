@@ -142,9 +142,10 @@ export default function PresencaTab() {
               <button
                 type="button"
                 onClick={() => { setModoNovo(false); setNome(''); }}
-                className="mt-1.5 text-[11px] text-bordo hover:underline"
+                className="mt-1.5 text-[11px] font-semibold rounded-full px-2.5 py-1 border
+                  text-muted border-border hover:border-bordo/60 hover:text-bordo transition"
               >
-                ← Voltar para a lista
+                ← Escolher da lista
               </button>
             </>
           ) : (
@@ -158,9 +159,10 @@ export default function PresencaTab() {
               <button
                 type="button"
                 onClick={() => { setModoNovo(true); setNome(''); setNomeOk(false); }}
-                className="mt-1.5 text-[11px] text-bordo hover:underline"
+                className="mt-1.5 text-[11px] font-semibold rounded-full px-2.5 py-1 border
+                  text-bordo border-bordo/40 bg-bordo/5 hover:bg-bordo/15 transition"
               >
-                Não estou na lista — é minha primeira vez
+                + Não estou na lista (cadastrar)
               </button>
             </>
           )}
