@@ -35,7 +35,7 @@ export default function Decor() {
       {/* camada B — deriva no sentido oposto e mais lenta, ligeiramente deslocada
           pra criar parallax / cruzamento entre as curvas */}
       <svg
-        className="decor-drift-b absolute inset-0 w-full h-full opacity-[0.10]"
+        className="decor-drift-b absolute inset-0 w-full h-full opacity-[0.05]"
         viewBox="0 0 1440 900"
         preserveAspectRatio="xMidYMid slice"
         style={{ transform: 'translateY(28px)' }}
@@ -49,7 +49,7 @@ export default function Decor() {
                   C 400 ${900 - o}, 760 ${600 - o * 0.68}, 1040 ${340 - o * 0.5}
                   S 1520 ${40 - o * 0.4}, 1820 ${-180 - o}`}
               stroke="var(--gold)"
-              strokeWidth="1"
+              strokeWidth="0.7"
               fill="none"
             />
           );
