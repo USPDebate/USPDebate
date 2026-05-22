@@ -1,16 +1,18 @@
 // Linhas de fundo decorativas — feixe de curvas em bordô cruzando a tela toda.
-// Puramente estético, atrás de todo o conteúdo, sem interação.
+// 2 camadas em direções opostas com deriva lenta dão sensação de movimento sutil.
+// Puramente estético, atrás de todo o conteúdo, sem interação. Respeita prefers-reduced-motion.
 export default function Decor() {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-      {/* brilho radial sutil */}
+      {/* brilho radial sutil — pulsa devagar */}
       <div
-        className="absolute -top-1/4 left-1/2 -translate-x-1/2 w-[1000px] h-[1000px] rounded-full"
+        className="decor-glow absolute -top-1/4 left-1/2 w-[1000px] h-[1000px] rounded-full"
         style={{ background: 'radial-gradient(circle, rgba(193,64,89,0.10), transparent 62%)' }}
       />
-      {/* feixe de linhas cobrindo toda a viewport */}
+
+      {/* camada A — deriva pra esquerda/baixo */}
       <svg
-        className="absolute inset-0 w-full h-full opacity-[0.17]"
+        className="decor-drift-a absolute inset-0 w-full h-full opacity-[0.17]"
         viewBox="0 0 1440 900"
         preserveAspectRatio="xMidYMid slice"
       >
@@ -24,6 +26,30 @@ export default function Decor() {
                   S 1480 ${60 - o * 0.42}, 1760 ${-140 - o}`}
               stroke="var(--bordo)"
               strokeWidth="1.5"
+              fill="none"
+            />
+          );
+        })}
+      </svg>
+
+      {/* camada B — deriva no sentido oposto e mais lenta, ligeiramente deslocada
+          pra criar parallax / cruzamento entre as curvas */}
+      <svg
+        className="decor-drift-b absolute inset-0 w-full h-full opacity-[0.10]"
+        viewBox="0 0 1440 900"
+        preserveAspectRatio="xMidYMid slice"
+        style={{ transform: 'translateY(28px)' }}
+      >
+        {Array.from({ length: 14 }).map((_, i) => {
+          const o = i * 78;
+          return (
+            <path
+              key={i}
+              d={`M -160 ${1100 - o}
+                  C 400 ${900 - o}, 760 ${600 - o * 0.68}, 1040 ${340 - o * 0.5}
+                  S 1520 ${40 - o * 0.4}, 1820 ${-180 - o}`}
+              stroke="var(--gold)"
+              strokeWidth="1"
               fill="none"
             />
           );
