@@ -140,3 +140,8 @@ begin
 end;
 $$;
 grant execute on function inserir_speak(text, bigint, date, int, text, numeric, text) to anon;
+
+-- Adiciona 'juiz' como tipo válido de presença (pós-PS).
+alter table presencas drop constraint if exists presencas_tipo_check;
+alter table presencas add constraint presencas_tipo_check
+  check (tipo in ('ps','visitante','observador','juiz'));

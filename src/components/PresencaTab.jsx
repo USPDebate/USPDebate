@@ -4,13 +4,13 @@ import Card, { SectionLabel } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Alert from '@/components/ui/Alert';
 import Autocomplete from '@/components/ui/Autocomplete';
-import { IconUsers, IconUser, IconEye, IconCheck } from '@/components/ui/Icons';
+import { IconUsers, IconUser, IconEye, IconCheck, IconScale } from '@/components/ui/Icons';
 import { listarPessoas, listarPresentesHoje, registrarPresenca, atualizarDupla } from '@/lib/supabase';
 import { toast } from '@/lib/toast';
 
 const TIPOS = [
-  { id: 'ps', label: 'Membro do PS', Icon: IconUsers },
-  { id: 'visitante', label: 'Visitante', Icon: IconUser },
+  { id: 'ps', label: 'Vou debater', Icon: IconUsers },
+  { id: 'juiz', label: 'Vou ser juiz', Icon: IconScale },
   { id: 'observador', label: 'Só vou assistir', Icon: IconEye },
 ];
 
@@ -59,7 +59,7 @@ export default function PresencaTab() {
       setAlerta({ tipo: 'error', msg: 'Selecione seu nome da lista — ou clique em "primeira vez".' });
       return;
     }
-    if (tipo !== 'observador' && dupla.trim() && !duplaOk) {
+    if (tipo === 'ps' && dupla.trim() && !duplaOk) {
       setDuplaInvalida(true);
       setAlerta({ tipo: 'error', msg: 'Selecione a dupla clicando num nome da lista.' }); return;
     }
@@ -101,7 +101,7 @@ export default function PresencaTab() {
 
         <div className="mb-3">
           <label className="block text-[10px] uppercase tracking-[0.15em] text-muted mb-2">
-            Você vai debater hoje?
+            O que você vai fazer hoje?
           </label>
           <div className="flex gap-1.5 items-stretch">
             {TIPOS.map((t) => {
@@ -166,7 +166,7 @@ export default function PresencaTab() {
           )}
         </div>
 
-        {tipo !== 'observador' && (
+        {tipo === 'ps' && (
           <div className="mb-3">
             <label className="block text-[10px] uppercase tracking-[0.15em] text-muted mb-2">
               Dupla (opcional)
@@ -262,7 +262,9 @@ export default function PresencaTab() {
         {presentes && presentes.length > 0 && (
           <div className="space-y-2">
             {presentes.map((p, i) => {
-              const obs = p.naoDebate;
+              const ehJuiz = p.tipo === 'juiz';
+              const ehObs = p.tipo === 'observador' || p.tipo === 'visitante';
+              const naoDebate = ehJuiz || ehObs;
               return (
                 <div
                   key={p.presencaId}
@@ -273,19 +275,23 @@ export default function PresencaTab() {
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px]
                       font-semibold text-white shrink-0
-                      ${obs ? 'bg-surface-2 !text-muted border border-border' : 'bg-bordo'}`}>
+                      ${ehJuiz ? 'bg-gold/30 !text-gold border border-gold/40'
+                        : ehObs ? 'bg-surface-2 !text-muted border border-border'
+                        : 'bg-bordo'}`}>
                       {iniciais(p.nome)}
                     </div>
                     <div>
-                      <div className={`text-[13px] font-semibold ${obs ? 'text-muted' : 'text-text'}`}>
+                      <div className={`text-[13px] font-semibold ${naoDebate ? 'text-muted' : 'text-text'}`}>
                         {p.nome}
                       </div>
                       <div className="text-[11px] mt-0.5">
-                        {obs
-                          ? <span className="text-muted">só assistindo</span>
-                          : p.dupla
-                            ? <span className="text-bordo">com {p.dupla}</span>
-                            : <span className="text-muted">sem dupla</span>}
+                        {ehJuiz
+                          ? <span className="text-gold">juiz</span>
+                          : ehObs
+                            ? <span className="text-muted">só assistindo</span>
+                            : p.dupla
+                              ? <span className="text-bordo">com {p.dupla}</span>
+                              : <span className="text-muted">sem dupla</span>}
                       </div>
                     </div>
                   </div>
@@ -293,7 +299,7 @@ export default function PresencaTab() {
                     <span className="text-[11px] text-muted bg-surface px-2 py-0.5 rounded-full">
                       {p.hora}
                     </span>
-                    {!obs && (
+                    {!naoDebate && (
                       <button
                         onClick={() => abrirEdicao(p)}
                         className="text-[10px] uppercase tracking-wide text-muted border border-border

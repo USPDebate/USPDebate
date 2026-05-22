@@ -67,7 +67,7 @@ export async function listarPresentes(dataISO) {
       nome: nomeDe.get(r.pessoa_id) || '',
       dupla: r.dupla_pessoa_id ? nomeDe.get(r.dupla_pessoa_id) || '' : '',
       tipo: r.tipo,
-      naoDebate: r.tipo === 'observador',
+      naoDebate: r.tipo === 'observador' || r.tipo === 'juiz',
       hora: new Date(r.criada_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     }))
     .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
@@ -112,7 +112,7 @@ export async function registrarPresenca({ nome, dupla, tipo }) {
     if (!pessoa) return { ok: false, erro: 'Nome inválido.' };
 
     let duplaId = null;
-    if (tipo !== 'observador' && dupla && dupla.trim().length >= 2) {
+    if (tipo === 'ps' && dupla && dupla.trim().length >= 2) {
       const d = await acharOuCriarPessoa(dupla);
       duplaId = d ? d.id : null;
     }

@@ -542,6 +542,29 @@ export default function AdminTab() {
 
         <Card style={{ animationDelay: '.13s' }}>
           <SectionLabel icon={IconScale}>Juízes gerais</SectionLabel>
+          {(() => {
+            const juizesPresentes = (presentes || []).filter((p) => p.tipo === 'juiz').map((p) => p.nome);
+            const novos = juizesPresentes.filter((n) => !juizes.includes(n));
+            if (!novos.length) return null;
+            return (
+              <div className="mb-3 p-2.5 rounded-lg bg-gold/10 border border-gold/30">
+                <p className="text-[11px] text-muted mb-2">
+                  <strong className="text-gold">{novos.length} pessoa(s) presente(s)</strong>
+                  {' '}marcou que vai ser juiz hoje e ainda não está nesta lista.
+                </p>
+                <button
+                  onClick={() => {
+                    const merge = [...new Set([...juizes, ...juizesPresentes])];
+                    persistirJuizes(merge);
+                    if (drawAtual) setDrawAtual({ ...drawAtual, juizes: merge });
+                  }}
+                  className="text-[11px] font-semibold text-gold border border-gold/40 rounded-lg
+                    px-3 py-1.5 hover:bg-gold/15 transition">
+                  + Importar {novos.length === 1 ? 'esse juiz' : `os ${novos.length} juízes`}
+                </button>
+              </div>
+            );
+          })()}
           {juizes.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-3">
               {juizes.map((j) => (

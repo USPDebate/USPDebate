@@ -36,7 +36,7 @@ create table if not exists presencas (
   data             date not null,
   dupla_pessoa_id  bigint references pessoas(id),
   tipo             text not null default 'ps'
-                     check (tipo in ('ps','visitante','observador')),
+                     check (tipo in ('ps','visitante','observador','juiz')),
   criada_em        timestamptz not null default now()
 );
 -- uma presença por pessoa por dia
