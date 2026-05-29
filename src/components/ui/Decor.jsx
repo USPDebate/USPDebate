@@ -1,6 +1,5 @@
-// Linhas de fundo decorativas — feixe de curvas em bordô cruzando a tela toda.
-// 2 camadas em direções opostas com deriva lenta dão sensação de movimento sutil.
-// Puramente estético, atrás de todo o conteúdo, sem interação. Respeita prefers-reduced-motion.
+// Linhas de fundo decorativas — feixe de curvas em bordô cobrindo a viewport.
+// Deriva lenta dá movimento sutil; respeita prefers-reduced-motion.
 export default function Decor() {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
@@ -10,46 +9,24 @@ export default function Decor() {
         style={{ background: 'radial-gradient(circle, rgba(193,64,89,0.10), transparent 62%)' }}
       />
 
-      {/* camada A — deriva pra esquerda/baixo */}
+      {/* feixe bordô — 26 linhas cobrindo a diagonal toda da viewport.
+          Offset começa negativo pra preencher o canto inferior-direito, e estende
+          além do número original pra cobrir o canto superior-esquerdo. */}
       <svg
         className="decor-drift-a absolute inset-0 w-full h-full opacity-[0.17]"
         viewBox="0 0 1440 900"
         preserveAspectRatio="xMidYMid slice"
       >
-        {Array.from({ length: 18 }).map((_, i) => {
-          const o = i * 64;
+        {Array.from({ length: 26 }).map((_, idx) => {
+          const o = (idx - 6) * 64;
           return (
             <path
-              key={i}
+              key={idx}
               d={`M -120 ${1080 - o}
                   C 360 ${940 - o}, 720 ${640 - o * 0.72}, 1000 ${380 - o * 0.55}
                   S 1480 ${60 - o * 0.42}, 1760 ${-140 - o}`}
               stroke="var(--bordo)"
               strokeWidth="1.5"
-              fill="none"
-            />
-          );
-        })}
-      </svg>
-
-      {/* camada B — deriva no sentido oposto e mais lenta, ligeiramente deslocada
-          pra criar parallax / cruzamento entre as curvas */}
-      <svg
-        className="decor-drift-b absolute inset-0 w-full h-full opacity-[0.05]"
-        viewBox="0 0 1440 900"
-        preserveAspectRatio="xMidYMid slice"
-        style={{ transform: 'translateY(28px)' }}
-      >
-        {Array.from({ length: 14 }).map((_, i) => {
-          const o = i * 78;
-          return (
-            <path
-              key={i}
-              d={`M -160 ${1100 - o}
-                  C 400 ${900 - o}, 760 ${600 - o * 0.68}, 1040 ${340 - o * 0.5}
-                  S 1520 ${40 - o * 0.4}, 1820 ${-180 - o}`}
-              stroke="var(--gold)"
-              strokeWidth="0.7"
               fill="none"
             />
           );

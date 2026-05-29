@@ -15,12 +15,6 @@ function norm(s) {
   return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
-function variancia(arr) {
-  if (arr.length < 2) return 0;
-  const m = arr.reduce((s, v) => s + v, 0) / arr.length;
-  return arr.reduce((s, v) => s + (v - m) ** 2, 0) / (arr.length - 1);
-}
-
 function pesoData(dataISO, refMs, lambda) {
   if (!dataISO) return 1;
   const ms = new Date(dataISO + 'T00:00:00').getTime();
@@ -101,7 +95,7 @@ export function calibrar(speaks, opts = {}) {
       });
     }
 
-    // Componentes de variância
+    // σ²_dentro = variância dos resíduos (peso temporal incluso).
     let s2 = 0, wAcc = 0;
     speaks.forEach((x, i) => {
       const r = x.speaks - nivel[x.pessoaId] - (vies[chaveJuiz(x)] || 0);
@@ -110,11 +104,31 @@ export function calibrar(speaks, opts = {}) {
     });
     sigma2Dentro = s2 / Math.max(1, wAcc);
 
-    const sigma2EntreDeb = variancia(Object.values(nivel));
-    if (sigma2EntreDeb < 0.01) break;
+    // σ²_entre por método dos momentos (ANOVA), sobre as médias NÃO encolhidas
+    // de cada debatedor (speak − viés do juiz). Usar os níveis encolhidos aqui
+    // subestimaria a variância e inflaria o K — por isso recalculamos do zero.
+    let SSB = 0, W = 0, sumW2 = 0, D = 0, grand = 0, grandW = 0;
+    const mDeb = [];
+    porDeb.forEach((idxs) => {
+      let sw = 0, swx = 0;
+      idxs.forEach((i) => {
+        const x = speaks[i];
+        sw += pesos[i];
+        swx += pesos[i] * (x.speaks - (vies[chaveJuiz(x)] || 0));
+      });
+      if (sw <= 0) return;
+      mDeb.push({ m: swx / sw, w: sw });
+      grand += swx; grandW += sw;
+    });
+    if (grandW <= 0 || mDeb.length < 2) break;
+    const mBar = grand / grandW;
+    mDeb.forEach(({ m, w }) => { SSB += w * (m - mBar) ** 2; W += w; sumW2 += w * w; D += 1; });
+    const denom = W - sumW2 / W;                       // graus de liberdade efetivos
+    let sigma2Entre = denom > 0 ? (SSB - (D - 1) * sigma2Dentro) / denom : 0;
+    sigma2Entre = Math.max(sigma2Entre, 0.05);         // piso: evita K explodir
 
-    const novoK = sigma2Dentro / sigma2EntreDeb;
-    const clamp = Math.max(0.1, Math.min(20, novoK));
+    const novoK = sigma2Dentro / sigma2Entre;
+    const clamp = Math.max(0.3, Math.min(12, novoK));  // faixa sensata
     if (Math.abs(clamp - K) < 0.05) { K = clamp; break; }
     K = clamp;
   }
