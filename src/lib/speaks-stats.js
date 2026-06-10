@@ -27,10 +27,12 @@ function pesoData(dataISO, refMs, lambda) {
 export function calibrar(speaks, opts = {}) {
   const {
     K_inicial = 3,
+    K_fixo = null,  // se fornecido, pula a auto-estimativa e usa esse valor
     iteracoes = 15,
     halfLifeDias = HALF_LIFE_DIAS_PADRAO,
     refDate = null,
   } = opts;
+  const estimarK = K_fixo === null;
 
   if (!speaks || !speaks.length) {
     return {
@@ -68,12 +70,13 @@ export function calibrar(speaks, opts = {}) {
   const vies = {};
   porJuiz.forEach((_, j) => { vies[j] = 0; });
 
-  let K = K_inicial;
+  let K = estimarK ? K_inicial : K_fixo;
   let sigma2Dentro = 0;
 
   // 3) Loop externo: ajusta o modelo, estima K dos componentes de variância,
-  //    re-ajusta. Em geral converge em 2-3 voltas.
-  for (let outer = 0; outer < 4; outer++) {
+  //    re-ajusta. Em geral converge em 2-3 voltas. Se K_fixo, faz só 1 volta.
+  const maxOuter = estimarK ? 4 : 1;
+  for (let outer = 0; outer < maxOuter; outer++) {
     for (let it = 0; it < iteracoes; it++) {
       porDeb.forEach((idxs, d) => {
         let soma = 0, wTot = 0;
@@ -103,6 +106,7 @@ export function calibrar(speaks, opts = {}) {
       wAcc += pesos[i];
     });
     sigma2Dentro = s2 / Math.max(1, wAcc);
+    if (!estimarK) break; // K fixado pelo usuário — só calcula sigma pra SE
 
     // σ²_entre por método dos momentos (ANOVA), sobre as médias NÃO encolhidas
     // de cada debatedor (speak − viés do juiz). Usar os níveis encolhidos aqui
