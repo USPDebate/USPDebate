@@ -53,7 +53,7 @@ export default function AdminDrawEditor({ draw, onChange, juizesPool = [] }) {
         return (
           <div key={sala.numero}
             className="border border-border rounded-xl2 overflow-hidden bg-surface-2">
-            <div className="flex justify-between px-4 py-3 bg-[#100d15] text-[11px]
+            <div className="flex justify-between px-4 py-3 bg-[#120c0e] text-[11px]
               uppercase tracking-wider font-semibold">
               <span>
                 Sala {sala.numero}
