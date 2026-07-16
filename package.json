@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.45.4",
@@ -14,7 +16,13 @@
     "react-dom": "18.3.1"
   },
   "devDependencies": {
+    "@babel/core": "^8.0.1",
+    "@babel/preset-env": "^8.0.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "autoprefixer": "10.4.20",
+    "babel-jest": "^30.4.1",
+    "jest": "^30.4.2",
     "postcss": "8.4.47",
     "tailwindcss": "3.4.14"
   }
