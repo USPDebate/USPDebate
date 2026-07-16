@@ -209,7 +209,7 @@ export default function SpeaksManual() {
       <div
         data-erro={erro ? 'true' : undefined}
         className={`rounded-lg p-2 transition border-2 scroll-mt-24 ${erro
-          ? 'border-danger ring-2 ring-[#e0625a66] bg-[#e0625a1a]'
+          ? 'border-danger ring-2 ring-[#e4585866] bg-[#e458581a]'
           : 'border-transparent'}`}
       >
         <div className="flex items-start gap-2">
@@ -248,8 +248,8 @@ export default function SpeaksManual() {
               onChange={(e) => upd(k, { speak: e.target.value })}
               placeholder="—"
               className={`w-16 px-1 py-2.5 rounded-lg text-center text-base font-bold outline-none
-                bg-[#ece4df] text-[#1a1212] border focus:border-bordo
-                ${fora ? 'border-danger ring-2 ring-[#e0625a66]' : 'border-border'}`}
+                bg-[#efecf6] text-[#171321] border focus:border-bordo
+                ${fora ? 'border-danger ring-2 ring-[#e4585866]' : 'border-border'}`}
             />
             {fora && <span className="text-[9px] text-danger font-semibold">50–100</span>}
           </div>
@@ -271,7 +271,7 @@ export default function SpeaksManual() {
       <div
         data-erro={erro ? 'true' : undefined}
         className={`rounded-lg p-2 transition border-2 scroll-mt-24 ${erro
-          ? 'border-danger ring-2 ring-[#e0625a66] bg-[#e0625a1a]'
+          ? 'border-danger ring-2 ring-[#e4585866] bg-[#e458581a]'
           : 'border-transparent'}`}
       >
         <div className="text-[10px] text-gold uppercase tracking-wider mb-1.5 font-semibold">
@@ -307,8 +307,8 @@ export default function SpeaksManual() {
                     onChange={(e) => upd(kk, { speak: e.target.value })}
                     placeholder="—"
                     className={`w-full px-1 py-2.5 rounded-lg text-center text-base font-bold outline-none
-                      bg-[#ece4df] text-[#1a1212] border focus:border-bordo
-                      ${fora ? 'border-danger ring-2 ring-[#e0625a66]' : 'border-border'}`} />
+                      bg-[#efecf6] text-[#171321] border focus:border-bordo
+                      ${fora ? 'border-danger ring-2 ring-[#e4585866]' : 'border-border'}`} />
                   <span className="text-[10px] text-muted">{i === 0 ? '1ª fala' : '2ª fala'}</span>
                 </div>
               );
@@ -333,7 +333,7 @@ export default function SpeaksManual() {
       <div
         data-erro={juizErro ? 'true' : undefined}
         className={`mb-4 rounded-lg p-2 transition border-2 scroll-mt-24 ${juizErro
-          ? 'border-danger ring-2 ring-[#e0625a66] bg-[#e0625a1a]'
+          ? 'border-danger ring-2 ring-[#e4585866] bg-[#e458581a]'
           : 'border-transparent'}`}
       >
         <label className="block text-[10px] uppercase tracking-[0.15em] text-muted mb-2">
@@ -394,7 +394,7 @@ export default function SpeaksManual() {
       <div className="space-y-3 mb-4">
         {POSICOES.map((pos) => (
           <div key={pos} className="border border-border rounded-xl2 bg-surface-2">
-            <div className="px-4 py-2 bg-[#120c0e] rounded-t-xl2 flex items-center gap-2 justify-between">
+            <div className="px-4 py-2 bg-[#100d15] rounded-t-xl2 flex items-center gap-2 justify-between">
               <div className="flex items-center gap-2">
                 <span className={`text-[10px] font-bold py-1 px-2 rounded border
                   ${POS_STYLE[pos]}`}>{pos}</span>

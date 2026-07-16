@@ -231,7 +231,7 @@ export default function SpeaksDoDraw() {
                       onChange={(e) => setNotas({ ...notas, [d.key]: e.target.value })}
                       placeholder="—"
                       className={`w-20 px-2 py-2 rounded-lg text-center text-base font-bold outline-none
-                        bg-[#ece4df] text-[#1a1212] border focus:border-bordo
+                        bg-[#efecf6] text-[#171321] border focus:border-bordo
                         ${fora ? 'border-danger ring-2 ring-danger/40' : 'border-border'}`}
                     />
                     {fora && <span className="text-[9px] text-danger font-semibold">use 50–100</span>}

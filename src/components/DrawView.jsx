@@ -13,7 +13,7 @@ export default function DrawView({ draw }) {
           style={{ animationDelay: idx * 0.06 + 's' }}
           className="border border-border rounded-xl2 overflow-hidden bg-surface-2 animate-rise
             transition-colors hover:border-bordo/40">
-          <div className="flex items-center justify-between gap-2 px-4 py-3 bg-[#120c0e]
+          <div className="flex items-center justify-between gap-2 px-4 py-3 bg-[#100d15]
             text-[11px] uppercase tracking-wider">
             <span className="font-semibold">
               Sala {sala.numero}

@@ -6,7 +6,7 @@ export default function Decor() {
       {/* brilho radial sutil — pulsa devagar */}
       <div
         className="decor-glow absolute -top-1/4 left-1/2 w-[1000px] h-[1000px] rounded-full"
-        style={{ background: 'radial-gradient(circle, rgba(193,64,89,0.10), transparent 62%)' }}
+        style={{ background: 'radial-gradient(circle, rgba(139,111,208,0.12), transparent 62%)' }}
       />
 
       {/* feixe bordô — 26 linhas cobrindo a diagonal toda da viewport.
