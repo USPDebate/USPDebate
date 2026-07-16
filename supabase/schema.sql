@@ -7,7 +7,10 @@
 -- ============================================================
 
 create extension if not exists unaccent;
-create extension if not exists pgcrypto;   -- crypt()/gen_salt() para a senha de admin
+-- crypt()/gen_salt() para a senha de admin. No Supabase, extensões vivem no
+-- schema "extensions" (não em public) — por isso o "with schema" e o
+-- search_path das funções incluindo "extensions".
+create extension if not exists pgcrypto with schema extensions;
 
 -- ─── 1. TEMPORADAS ──────────────────────────────────────────
 create table if not exists temporadas (
@@ -115,7 +118,7 @@ create or replace function verificar_senha(p_senha text)
 returns boolean
 language sql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
   select exists (
     select 1 from config
@@ -130,10 +133,10 @@ grant execute on function verificar_senha(text) to anon;
 -- Senha de admin: 'USPDebate2026', gravada com hash bcrypt (não em claro).
 -- Rodar de novo re-hasheia (migra automaticamente um valor antigo em claro).
 -- Para trocar a senha, rode no SQL Editor:
---   update config set valor = crypt('NOVA_SENHA', gen_salt('bf'))
+--   update config set valor = extensions.crypt('NOVA_SENHA', extensions.gen_salt('bf'))
 --    where chave = 'senha_admin';
 insert into config (chave, valor)
-values ('senha_admin', crypt('USPDebate2026', gen_salt('bf')))
+values ('senha_admin', extensions.crypt('USPDebate2026', extensions.gen_salt('bf')))
 on conflict (chave) do update set valor = excluded.valor;
 
 insert into temporadas (nome, ativa)

@@ -10,7 +10,7 @@ create or replace function _checar_admin(p_senha text)
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 begin
   -- Compara via crypt() contra o hash bcrypt guardado (ver schema.sql).
