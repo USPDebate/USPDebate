@@ -13,8 +13,10 @@ security definer
 set search_path = public
 as $$
 begin
+  -- Compara via crypt() contra o hash bcrypt guardado (ver schema.sql).
   if not exists (
-    select 1 from config where chave = 'senha_admin' and valor = p_senha
+    select 1 from config
+     where chave = 'senha_admin' and valor = crypt(p_senha, valor)
   ) then
     raise exception 'Senha de administrador incorreta';
   end if;
