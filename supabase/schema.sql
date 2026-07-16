@@ -7,7 +7,6 @@
 -- ============================================================
 
 create extension if not exists unaccent;
-create extension if not exists pgcrypto;   -- crypt()/gen_salt() para a senha de admin
 
 -- ─── 1. TEMPORADAS ──────────────────────────────────────────
 create table if not exists temporadas (
@@ -108,9 +107,6 @@ create policy editar_presenca on presencas for update using (true) with check (t
 -- ============================================================
 -- FUNÇÃO: verificar senha de admin
 -- ============================================================
--- A senha é guardada com hash bcrypt (crypt/gen_salt). A comparação usa o
--- próprio crypt(), não igualdade de texto — evita armazenar a senha em claro
--- e o vazamento por timing da comparação de strings.
 create or replace function verificar_senha(p_senha text)
 returns boolean
 language sql
@@ -118,8 +114,7 @@ security definer
 set search_path = public
 as $$
   select exists (
-    select 1 from config
-     where chave = 'senha_admin' and valor = crypt(p_senha, valor)
+    select 1 from config where chave = 'senha_admin' and valor = p_senha
   );
 $$;
 grant execute on function verificar_senha(text) to anon;
@@ -127,13 +122,8 @@ grant execute on function verificar_senha(text) to anon;
 -- ============================================================
 -- SEED — rode esta parte UMA vez só
 -- ============================================================
--- Senha de admin: 'USPDebate2026', gravada com hash bcrypt (não em claro).
--- Rodar de novo re-hasheia (migra automaticamente um valor antigo em claro).
--- Para trocar a senha, rode no SQL Editor:
---   update config set valor = crypt('NOVA_SENHA', gen_salt('bf'))
---    where chave = 'senha_admin';
 insert into config (chave, valor)
-values ('senha_admin', crypt('USPDebate2026', gen_salt('bf')))
+values ('senha_admin', 'USPDebate2026')
 on conflict (chave) do update set valor = excluded.valor;
 
 insert into temporadas (nome, ativa)
