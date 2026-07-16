@@ -39,13 +39,13 @@ export default function Page() {
       <Decor />
 
       {/* Header */}
-      <header className="relative z-10 bg-gradient-to-br from-[#120c0e]/90 to-bordo-soft/40
+      <header className="relative z-10 bg-gradient-to-br from-[#100d15]/90 to-bordo-soft/40
         px-5 py-6 flex items-end justify-between border-b border-border animate-drop">
         <div>
           <h1 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight leading-none">
             USP Debate
           </h1>
-          <p className="text-[10px] uppercase tracking-[0.22em] text-gold/80 mt-2">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-gold/80 mt-2">
             Sistema de Treinos BP
           </p>
         </div>
@@ -56,12 +56,12 @@ export default function Page() {
       </header>
 
       {/* Tabs (desktop) */}
-      <nav className="relative z-10 hidden sm:flex bg-[#120c0e]/80 px-5 border-b border-border">
+      <nav className="relative z-10 hidden sm:flex bg-[#100d15]/80 px-5 border-b border-border">
         {ABAS.map((a) => (
           <button
             key={a.id}
             onClick={() => setAba(a.id)}
-            className={`px-4 py-3 text-[10px] uppercase tracking-[0.13em] transition border-b-2
+            className={`font-mono px-4 py-3 text-[10px] uppercase tracking-[0.13em] transition border-b-2
               ${aba === a.id
                 ? 'text-gold border-gold'
                 : 'text-muted border-transparent hover:text-text'}`}

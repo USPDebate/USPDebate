@@ -2,19 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Design tokens — dark theme (vibe escura, base bordô/gold) ─── */
+/* ─── Design tokens — dark theme (Modern design system: editorial, roxo #553F83) ───
+   Nomes das variáveis mantidos (bordo/gold) pra não tocar em todos os componentes;
+   os valores agora vêm da paleta Modern (design-skills-repo/skills/modern). */
 :root {
-  --bg:          #161113;
-  --surface:     #1f181b;
-  --surface-2:   #281f23;
-  --border:      #392d32;
-  --text:        #f1ebe8;
-  --muted:       #9b8b85;
-  --bordo:       #c14059;
-  --bordo-soft:  #8a2538;
-  --gold:        #cda963;
-  --success:     #4caf7d;
-  --danger:      #e0625a;
+  --bg:          #121016;
+  --surface:     #1a1622;
+  --surface-2:   #231d2e;
+  --border:      #362c49;
+  --text:        #f2eff7;
+  --muted:       #9a91ac;
+  --bordo:       #8b6fd0;  /* primary clareado p/ contraste no escuro */
+  --bordo-soft:  #553F83;  /* Modern primary */
+  --gold:        #e3a44f;  /* Modern warning (#D97706) clareado */
+  --success:     #3fbe77;  /* Modern success (#16A34A) clareado */
+  --danger:      #e45858;  /* Modern danger (#DC2626) clareado */
 }
 
 html, body { background: var(--bg); color: var(--text); }

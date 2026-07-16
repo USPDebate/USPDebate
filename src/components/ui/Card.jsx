@@ -17,7 +17,7 @@ export function SectionLabel({ children, icon: Icon, right }) {
           <Icon className="w-4 h-4" />
         </span>
       )}
-      <span className="text-[12px] font-semibold uppercase tracking-[0.16em] text-text">{children}</span>
+      <span className="font-mono text-[12px] font-semibold uppercase tracking-[0.16em] text-text">{children}</span>
       <span className="flex-1 h-px bg-border" />
       {right}
     </div>

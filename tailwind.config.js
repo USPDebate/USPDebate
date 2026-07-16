@@ -19,6 +19,7 @@ module.exports = {
       fontFamily: {
         display: ['var(--font-display)', 'Georgia', 'serif'],
         sans:    ['var(--font-body)', 'system-ui', 'sans-serif'],
+        mono:    ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
       borderRadius: { xl2: '1.25rem' },
     },
