@@ -1,11 +1,9 @@
-import { Hanken_Grotesk, IBM_Plex_Serif, JetBrains_Mono } from 'next/font/google';
+import { Space_Grotesk, Hanken_Grotesk } from 'next/font/google';
 import './globals.css';
-import './design-tokens-modern.css';
 
-// Tipografia do design system Modern (editorial):
-// IBM Plex Serif = display; Hanken Grotesk = corpo; JetBrains Mono = rótulos/números.
-const display = IBM_Plex_Serif({
-  weight: ['400', '500', '600', '700'],
+// Fontes com caráter, não-genéricas (substituem Alteix Sans / Arena).
+// Space Grotesk = display; Hanken Grotesk = corpo. Nada de Inter/Roboto/Arial.
+const display = Space_Grotesk({
   subsets: ['latin'],
   variable: '--font-display',
   display: 'swap',
@@ -15,11 +13,6 @@ const body = Hanken_Grotesk({
   variable: '--font-body',
   display: 'swap',
 });
-const mono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-  display: 'swap',
-});
 
 export const metadata = {
   title: 'USP Debate — Treinos',
@@ -27,7 +20,7 @@ export const metadata = {
 };
 
 export const viewport = {
-  themeColor: '#121016',
+  themeColor: '#161113',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -36,7 +29,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="pt-BR" className={`${display.variable} ${body.variable} ${mono.variable}`}>
+    <html lang="pt-BR" className={`${display.variable} ${body.variable}`}>
       <body>{children}</body>
     </html>
   );

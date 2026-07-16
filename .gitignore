@@ -3,7 +3,3 @@ node_modules/
 out/
 .DS_Store
 *.log
-
-# Repos de referência clonados (design skills)
-claude-code-repo/
-design-skills-repo/

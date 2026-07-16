@@ -878,7 +878,7 @@ export default function AdminTab() {
               <div className="space-y-3">
                 {Array.from(new Set(regLinhas.map((l) => l.sala))).sort((a, b) => a - b).map((sala) => (
                   <div key={sala} className="border border-border rounded-xl2 overflow-hidden bg-surface-2">
-                    <div className="px-3 py-2 bg-[#100d15] text-[11px] uppercase tracking-wider font-semibold">
+                    <div className="px-3 py-2 bg-[#120c0e] text-[11px] uppercase tracking-wider font-semibold">
                       Sala {sala}
                     </div>
                     {regLinhas.filter((l) => l.sala === sala).map((l) => (
@@ -923,7 +923,7 @@ export default function AdminTab() {
                           type="number" min={0} max={100} defaultValue={l.speaks}
                           onBlur={(e) => alterarNotaLinha(l, e.target.value)}
                           className="w-full px-2 py-1.5 rounded-lg text-center text-[13px] font-bold
-                            bg-[#efecf6] text-[#171321] border border-border outline-none focus:border-bordo"
+                            bg-[#ece4df] text-[#1a1212] border border-border outline-none focus:border-bordo"
                         />
                         <button onClick={() => apagarLinha(l)} className="text-danger p-1">
                           <IconTrash className="w-4 h-4" />
