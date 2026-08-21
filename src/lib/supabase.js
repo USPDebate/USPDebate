@@ -322,6 +322,15 @@ export async function mesclarPessoas({ manter, remover, senha }) {
   return { ok: true };
 }
 
+// Renomeia um cadastro. O nome do juiz/mentor (guardados em texto) acompanha.
+export async function renomearPessoa({ pessoaId, nome, senha }) {
+  const { error } = await sb.rpc('renomear_pessoa', {
+    p_senha: senha, p_pessoa_id: pessoaId, p_nome: nome,
+  });
+  if (error) return { ok: false, erro: error.message };
+  return { ok: true };
+}
+
 export async function apagarPessoa({ pessoaId, senha }) {
   const { error } = await sb.rpc('apagar_pessoa', {
     p_senha: senha, p_pessoa_id: pessoaId,

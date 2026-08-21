@@ -13,7 +13,7 @@ import {
   gerarDraw as apiGerarDraw, salvarDraw, apagarPresenca, mesclarPessoas, apagarPessoa,
   getSpeaks, listarPresentes, getDatasPresenca, getDatasSpeaks, apagarSpeaksData, norm,
   apagarDrawDia, getSpeaksDeData, editarSpeak, apagarSpeak, inserirSpeak,
-  acharOuCriarPessoa,
+  acharOuCriarPessoa, renomearPessoa,
 } from '@/lib/supabase';
 import { calibrar, analiseJuizes } from '@/lib/speaks-stats';
 import { toast } from '@/lib/toast';
@@ -52,6 +52,9 @@ export default function AdminTab() {
   const [mergeKeep, setMergeKeep] = useState('');
   const [mergeRemove, setMergeRemove] = useState('');
   const [apagarNome, setApagarNome] = useState('');
+  const [renomeAtual, setRenomeAtual] = useState('');
+  const [renomeNovo, setRenomeNovo] = useState('');
+  const [alertaRenome, setAlertaRenome] = useState(null);
 
   const [alertaAcao, setAlertaAcao] = useState(null);
   const [alertaDraw, setAlertaDraw] = useState(null);
@@ -383,6 +386,37 @@ export default function AdminTab() {
     } else setAlertaMerge({ tipo: 'error', msg: res.erro });
   }
 
+  // ── Renomear cadastro ──
+  async function renomear() {
+    const p = pessoas.find((x) => norm(x.nome) === norm(renomeAtual));
+    if (!p) { setAlertaRenome({ tipo: 'error', msg: 'Selecione o cadastro da lista.' }); return; }
+    const novo = renomeNovo.trim();
+    if (novo.length < 2) {
+      setAlertaRenome({ tipo: 'error', msg: 'Digite o nome novo (mínimo 2 letras).' }); return;
+    }
+    if (novo === p.nome) {
+      setAlertaRenome({ tipo: 'info', msg: 'O nome novo é igual ao atual.' }); return;
+    }
+    const outro = pessoas.find((x) => x.id !== p.id && norm(x.nome) === norm(novo));
+    if (outro) {
+      setAlertaRenome({
+        tipo: 'error',
+        msg: `Já existe o cadastro "${outro.nome}". Para juntar os dois, use "Mesclar cadastros duplicados".`,
+      });
+      return;
+    }
+    if (!window.confirm(`Renomear cadastro:\n\nDE:   ${p.nome}\nPARA: ${novo}\n\n`
+      + 'Todo o histórico (presenças, speaks, trainees) continua com essa pessoa. Confirmar?')) return;
+    const res = await renomearPessoa({ pessoaId: p.id, nome: novo, senha });
+    if (res.ok) {
+      setAlertaRenome({ tipo: 'success', msg: `Agora chama "${novo}".` });
+      setRenomeAtual(''); setRenomeNovo('');
+      listarPessoas().then((pp) => setPessoas(pp || []));
+      carregarPresentes();
+      if (regData) carregarLinhasReg(regData);
+    } else setAlertaRenome({ tipo: 'error', msg: res.erro });
+  }
+
   // ── Apagar pessoa ──
   async function apagarPessoaFn() {
     const p = pessoas.find((x) => norm(x.nome) === norm(apagarNome));
@@ -443,7 +477,7 @@ export default function AdminTab() {
             <IconUsers className="w-6 h-6 text-bordo mb-2" />
             <div className="text-[13px] font-semibold">Registros e cadastros</div>
             <div className="text-[11px] text-muted mt-1">
-              Mesclar cadastros duplicados e apagar pessoas.
+              Corrigir nomes, mesclar duplicados, apagar pessoas e editar speaks.
             </div>
           </button>
           <button
@@ -807,6 +841,49 @@ export default function AdminTab() {
       <Voltar />
 
       <Card style={{ animationDelay: '.05s' }}>
+        <SectionLabel icon={IconUsers}>Corrigir nome de um cadastro</SectionLabel>
+        {alertaRenome && <Alert tipo={alertaRenome.tipo} msg={alertaRenome.msg} />}
+        <p className="text-xs text-muted mb-3">
+          Renomeia a pessoa mantendo <strong className="text-text">todo o histórico</strong> —
+          presenças, speaker points e trainees continuam ligados a ela. Use para completar um
+          sobrenome ou consertar um nome digitado errado.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-2 mb-2">
+          <div>
+            <label className="block text-[10px] uppercase tracking-[0.15em] text-muted mb-1.5">
+              Cadastro atual
+            </label>
+            <Autocomplete value={renomeAtual} options={nomesPessoas}
+              placeholder="Quem você quer renomear..."
+              onChange={(v) => { setRenomeAtual(v); setAlertaRenome(null); }} />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-[0.15em] text-muted mb-1.5">
+              Nome novo
+            </label>
+            <input
+              type="text"
+              value={renomeNovo}
+              onChange={(e) => { setRenomeNovo(e.target.value); setAlertaRenome(null); }}
+              placeholder="Nome e sobrenome corretos..."
+              className="w-full px-3.5 py-3 rounded-lg text-base outline-none focus:border-bordo"
+            />
+          </div>
+        </div>
+        {renomeAtual && !renomeNovo && (
+          <button
+            type="button"
+            onClick={() => setRenomeNovo(renomeAtual)}
+            className="text-[11px] font-semibold rounded-full px-2.5 py-1 border mb-2
+              text-bordo border-bordo/40 bg-bordo/5 hover:bg-bordo/15 transition"
+          >
+            + Partir do nome atual
+          </button>
+        )}
+        <Button onClick={renomear}>Salvar nome</Button>
+      </Card>
+
+      <Card style={{ animationDelay: '.1s' }}>
         <SectionLabel icon={IconUsers}>Mesclar cadastros duplicados</SectionLabel>
         {alertaMerge && <Alert tipo={alertaMerge.tipo} msg={alertaMerge.msg} />}
         <p className="text-xs text-muted mb-3">
@@ -828,7 +905,7 @@ export default function AdminTab() {
         <Button variant="danger" onClick={mesclar}>Mesclar e apagar duplicado</Button>
       </Card>
 
-      <Card style={{ animationDelay: '.1s' }}>
+      <Card style={{ animationDelay: '.15s' }}>
         <SectionLabel icon={IconTrash}>Apagar pessoa</SectionLabel>
         {alertaApagar && <Alert tipo={alertaApagar.tipo} msg={alertaApagar.msg} />}
         <p className="text-xs text-muted mb-3">
@@ -842,7 +919,7 @@ export default function AdminTab() {
         <Button variant="danger" onClick={apagarPessoaFn}>Apagar pessoa</Button>
       </Card>
 
-      <Card style={{ animationDelay: '.15s' }}>
+      <Card style={{ animationDelay: '.2s' }}>
         <SectionLabel icon={IconScale}>Editar registros de speaks</SectionLabel>
         <p className="text-xs text-muted mb-3">
           Corrija notas, troque nomes mal preenchidos ou re-adicione registros apagados.

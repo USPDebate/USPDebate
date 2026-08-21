@@ -141,6 +141,48 @@ end;
 $$;
 grant execute on function inserir_speak(text, bigint, date, int, text, numeric, text) to anon;
 
+-- Renomeia um cadastro (corrige nome digitado errado, completa sobrenome).
+-- Como o nome do juiz (speaker_points.juiz) e o do mentor (trainees.mentor)
+-- são guardados em texto, eles acompanham o rename — senão o histórico se parte.
+create or replace function renomear_pessoa(p_senha text, p_pessoa_id bigint, p_nome text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_limpo  text;
+  v_norm   text;
+  v_antigo text;
+begin
+  perform _checar_admin(p_senha);
+
+  v_limpo := btrim(p_nome);
+  if length(v_limpo) < 2 then
+    raise exception 'Nome muito curto';
+  end if;
+  v_norm := lower(unaccent(v_limpo));
+
+  select nome into v_antigo from pessoas where id = p_pessoa_id;
+  if v_antigo is null then
+    raise exception 'Cadastro não encontrado';
+  end if;
+
+  if exists (select 1 from pessoas where nome_norm = v_norm and id <> p_pessoa_id) then
+    raise exception 'Já existe outro cadastro com esse nome. Use "Mesclar cadastros duplicados".';
+  end if;
+
+  update pessoas set nome = v_limpo, nome_norm = v_norm where id = p_pessoa_id;
+
+  update speaker_points set juiz = v_limpo
+   where juiz is not null and lower(unaccent(juiz)) = lower(unaccent(v_antigo));
+
+  update trainees set mentor = v_limpo
+   where mentor is not null and lower(unaccent(mentor)) = lower(unaccent(v_antigo));
+end;
+$$;
+grant execute on function renomear_pessoa(text, bigint, text) to anon;
+
 -- Adiciona 'juiz' como tipo válido de presença (pós-PS).
 alter table presencas drop constraint if exists presencas_tipo_check;
 alter table presencas add constraint presencas_tipo_check
