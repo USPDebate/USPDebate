@@ -14,9 +14,12 @@ as $$
 begin
   perform _checar_admin(p_senha);
   update presencas set dupla_pessoa_id = null where dupla_pessoa_id = p_pessoa_id;
-  delete from speaker_points where pessoa_id = p_pessoa_id;
-  delete from presencas where pessoa_id = p_pessoa_id;
-  delete from pessoas where id = p_pessoa_id;
+  delete from speaker_points   where pessoa_id = p_pessoa_id;
+  delete from presencas        where pessoa_id = p_pessoa_id;
+  -- trainees tem FK para pessoas: precisa sair antes, senão a constraint bloqueia
+  delete from trainee_formacoes where pessoa_id = p_pessoa_id;
+  delete from trainees         where pessoa_id = p_pessoa_id;
+  delete from pessoas          where id = p_pessoa_id;
 end;
 $$;
 grant execute on function apagar_pessoa(text, bigint) to anon;

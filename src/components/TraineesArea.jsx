@@ -13,12 +13,21 @@ import {
 import { calibrar, ranking } from '@/lib/speaks-stats';
 import { toast } from '@/lib/toast';
 
+// Tira numeração / marcador do começo da linha: "1.", "2)", "-", "•", ". ".
+// Sem isso o nome entra no cadastro com o lixo junto e vira um duplicado.
+function limparNome(s) {
+  return String(s || '')
+    .replace(/^\s*\d+\s*[.)\]:-]?\s*/, '')
+    .replace(/^\s*[.\-–—•*·]+\s*/, '')
+    .trim();
+}
+
 // Cada linha vira um trainee. Coluna 2 (se houver) = mentor.
 function parseCSV(texto) {
   const linhas = texto.split('\n').map((l) => l.trim()).filter(Boolean);
   const out = linhas.map((l) => {
     const p = l.split(/[,;\t]/).map((s) => s.trim());
-    return { nome: p[0], mentor: p[1] || '' };
+    return { nome: limparNome(p[0]), mentor: p[1] || '' };
   }).filter((t) => t.nome && t.nome.length >= 2);
   if (out.length && out[0].nome.toLowerCase() === 'nome') out.shift();
   return out;

@@ -155,6 +155,33 @@ begin
   -- duplas que apontavam para o removido
   update presencas set dupla_pessoa_id = p_manter where dupla_pessoa_id = p_remover;
 
+  -- trainee_formacoes: descarta as do removido que colidiriam (mesma semana)
+  delete from trainee_formacoes tf_old
+   where tf_old.pessoa_id = p_remover
+     and exists (
+       select 1 from trainee_formacoes tf_new
+        where tf_new.pessoa_id = p_manter
+          and tf_new.semana_id = tf_old.semana_id
+     );
+  update trainee_formacoes set pessoa_id = p_manter where pessoa_id = p_remover;
+
+  -- trainees: se os dois são trainee na mesma temporada, sobra o do mantido —
+  -- herdando o mentor do removido caso o mantido esteja sem mentor.
+  update trainees t_new
+     set mentor = coalesce(t_new.mentor, t_old.mentor)
+    from trainees t_old
+   where t_new.pessoa_id = p_manter
+     and t_old.pessoa_id = p_remover
+     and t_new.temporada_id = t_old.temporada_id;
+  delete from trainees t_old
+   where t_old.pessoa_id = p_remover
+     and exists (
+       select 1 from trainees t_new
+        where t_new.pessoa_id = p_manter
+          and t_new.temporada_id = t_old.temporada_id
+     );
+  update trainees set pessoa_id = p_manter where pessoa_id = p_remover;
+
   delete from pessoas where id = p_remover;
 end;
 $$;
