@@ -371,19 +371,31 @@ export async function getPresencasRaw() {
 }
 
 // lista = [{ nome, mentor }]
+// Nomes diferentes podem resolver para a mesma pessoa (acentos, maiúsculas, linha
+// repetida). O upsert do Postgres recusa a mesma linha duas vezes na mesma chamada,
+// então deduplicamos por pessoa_id antes de gravar.
 export async function importarTrainees(lista) {
   const temp = await temporadaAtiva();
   if (!temp) return { ok: false, erro: 'Nenhuma temporada ativa.' };
-  const rows = [];
+  const porPessoa = new Map(); // pessoa_id -> row
+  const duplicados = [];
   for (const item of lista) {
     const p = await acharOuCriarPessoa(item.nome);
-    if (p) rows.push({ temporada_id: temp.id, pessoa_id: p.id, mentor: item.mentor || null });
+    if (!p) continue;
+    const anterior = porPessoa.get(p.id);
+    if (anterior) {
+      duplicados.push(p.nome);
+      if (item.mentor) anterior.mentor = item.mentor; // a última menção de mentor vence
+      continue;
+    }
+    porPessoa.set(p.id, { temporada_id: temp.id, pessoa_id: p.id, mentor: item.mentor || null });
   }
+  const rows = [...porPessoa.values()];
   if (!rows.length) return { ok: false, erro: 'Nenhum nome válido.' };
   const { error } = await sb.from('trainees')
     .upsert(rows, { onConflict: 'temporada_id,pessoa_id' });
   if (error) return { ok: false, erro: error.message };
-  return { ok: true, n: rows.length };
+  return { ok: true, n: rows.length, duplicados: [...new Set(duplicados)] };
 }
 
 export async function resetarTrainees() {

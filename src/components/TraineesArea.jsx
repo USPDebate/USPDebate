@@ -116,8 +116,18 @@ export default function TraineesArea({ senha }) {
     const lista = parseCSV(csv);
     if (!lista.length) { setAlerta({ tipo: 'error', msg: 'Cole pelo menos um nome.' }); return; }
     const res = await importarTrainees(lista);
-    if (res.ok) { toast('success', `${res.n} trainee(s) importado(s).`); setCsv(''); setAlerta(null); recarregar(); }
-    else setAlerta({ tipo: 'error', msg: res.erro });
+    if (res.ok) {
+      toast('success', `${res.n} trainee(s) importado(s).`);
+      setCsv('');
+      if (res.duplicados?.length) {
+        setAlerta({
+          tipo: 'info',
+          msg: `${res.n} trainee(s) importado(s). Nome(s) repetido(s) na lista, contados uma vez só: `
+            + res.duplicados.join(', ') + '.',
+        });
+      } else setAlerta(null);
+      recarregar();
+    } else setAlerta({ tipo: 'error', msg: res.erro });
   }
   async function confirmarReset() {
     setModalReset(false);
