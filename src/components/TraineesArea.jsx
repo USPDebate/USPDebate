@@ -8,7 +8,8 @@ import { IconUsers, IconClock, IconChart, IconTrash, IconPlus } from '@/componen
 import {
   getTrainees, getTraineeSemanas, getTraineeFormacoes, getPresencasRaw, getSpeaks,
   getDatasPresenca, getDrawsDaTemporada, importarTrainees, resetarTrainees,
-  criarSemana, editarSemana, apagarSemana, toggleFormacao, marcarPresenca,
+  removerTrainees, criarSemana, editarSemana, apagarSemana, toggleFormacao,
+  marcarPresenca,
 } from '@/lib/supabase';
 import { nomesDoDraw } from '@/lib/draw';
 import { norm } from '@/lib/data';
@@ -107,6 +108,9 @@ export default function TraineesArea({ senha }) {
   const [dataNova, setDataNova] = useState('');
   const [alerta, setAlerta] = useState(null);
   const [modalReset, setModalReset] = useState(false);
+  const [selecionando, setSelecionando] = useState(false);
+  const [selecionados, setSelecionados] = useState(new Set());
+  const [modalRemover, setModalRemover] = useState(false);
 
   function recarregar() {
     Promise.all([
@@ -143,6 +147,35 @@ export default function TraineesArea({ senha }) {
       recarregar();
     } else setAlerta({ tipo: 'error', msg: res.erro });
   }
+  function toggleSel(pessoaId) {
+    setSelecionados((cur) => {
+      const novo = new Set(cur);
+      if (novo.has(pessoaId)) novo.delete(pessoaId); else novo.add(pessoaId);
+      return novo;
+    });
+  }
+  function selecionarGrupo(lista) {
+    const todos = lista.every((t) => selecionados.has(t.pessoaId));
+    setSelecionados((cur) => {
+      const novo = new Set(cur);
+      lista.forEach((t) => { if (todos) novo.delete(t.pessoaId); else novo.add(t.pessoaId); });
+      return novo;
+    });
+  }
+  function sairDaSelecao() {
+    setSelecionando(false);
+    setSelecionados(new Set());
+  }
+  async function confirmarRemover() {
+    setModalRemover(false);
+    const res = await removerTrainees([...selecionados]);
+    if (res.ok) {
+      toast('success', `${res.n} trainee(s) removido(s) do acompanhamento.`);
+      sairDaSelecao();
+      recarregar();
+    } else setAlerta({ tipo: 'error', msg: res.erro });
+  }
+
   async function confirmarReset() {
     setModalReset(false);
     const res = await resetarTrainees();
@@ -426,11 +459,49 @@ export default function TraineesArea({ senha }) {
               no draw daquela semana mas não tem presença registrada — conta como treino e vira
               registro fixo se você tocar nele.
             </p>
+            <div className="flex items-center gap-2 flex-wrap mb-3">
+              {!selecionando ? (
+                <button onClick={() => setSelecionando(true)}
+                  className="text-[11px] text-muted border border-border rounded-lg px-3 py-1.5
+                    hover:border-bordo hover:text-bordo transition">
+                  Selecionar para remover
+                </button>
+              ) : (
+                <>
+                  <span className="text-[11px] text-muted">
+                    {selecionados.size} selecionado(s)
+                  </span>
+                  <button
+                    onClick={() => setModalRemover(true)}
+                    disabled={selecionados.size === 0}
+                    className="text-[11px] text-danger border border-[#e0625a66] rounded-lg
+                      px-3 py-1.5 transition hover:bg-[#e0625a1a]
+                      disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">
+                    Remover selecionados
+                  </button>
+                  <button onClick={sairDaSelecao}
+                    className="text-[11px] text-muted border border-border rounded-lg px-3 py-1.5
+                      hover:border-bordo hover:text-bordo transition">
+                    Cancelar
+                  </button>
+                </>
+              )}
+            </div>
             <div className="space-y-5">
               {Object.entries(grupos).map(([mentor, lista]) => (
                 <div key={mentor}>
-                  <div className="text-[11px] uppercase tracking-wider text-gold mb-2">
-                    Mentor: {mentor}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[11px] uppercase tracking-wider text-gold">
+                      Mentor: {mentor}
+                    </span>
+                    {selecionando && (
+                      <button onClick={() => selecionarGrupo(lista)}
+                        className="text-[10px] text-muted border border-border rounded px-2 py-0.5
+                          hover:border-bordo hover:text-bordo transition">
+                        {lista.every((t) => selecionados.has(t.pessoaId))
+                          ? 'limpar grupo' : 'todos do grupo'}
+                      </button>
+                    )}
                   </div>
                   <div className="overflow-x-auto">
                     <table className="text-[12px] border-separate" style={{ borderSpacing: '0 6px' }}>
@@ -456,7 +527,19 @@ export default function TraineesArea({ senha }) {
                           return (
                             <tr key={t.pessoaId}>
                               <td className="px-2 py-1 font-semibold sticky left-0 bg-surface
-                                max-w-[110px] sm:max-w-none truncate" title={t.nome}>{t.nome}</td>
+                                max-w-[110px] sm:max-w-none truncate" title={t.nome}>
+                                {selecionando ? (
+                                  <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={selecionados.has(t.pessoaId)}
+                                      onChange={() => toggleSel(t.pessoaId)}
+                                      className="w-4 h-4 shrink-0 accent-[#c14059]"
+                                    />
+                                    <span className="truncate">{t.nome}</span>
+                                  </label>
+                                ) : t.nome}
+                              </td>
                               {semanas.map((s) => {
                                 const pres = presencaNa(t.pessoaId, s);
                                 const feito = formacoes.has(t.pessoaId + '-' + s.id);
@@ -515,6 +598,16 @@ export default function TraineesArea({ senha }) {
           </>
         )}
       </Card>
+
+      <ConfirmModal
+        aberto={modalRemover}
+        titulo={`Remover ${selecionados.size} trainee(s) do acompanhamento?`}
+        mensagem="Eles saem da lista de trainees e perdem as formações marcadas. O cadastro, as presenças e os speaker points continuam intactos — dá para reimportar depois."
+        textoConfirmar="Sim, remover"
+        variantConfirmar="danger"
+        onConfirmar={confirmarRemover}
+        onCancelar={() => setModalRemover(false)}
+      />
 
       <ConfirmModal
         aberto={modalReset}

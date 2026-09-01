@@ -418,6 +418,23 @@ export async function importarTrainees(lista) {
   return { ok: true, n: rows.length, duplicados: [...new Set(duplicados)] };
 }
 
+// Tira pessoas específicas da lista de trainees da temporada. O cadastro, as
+// presenças e os speaks continuam: sai só o vínculo de trainee e as formações
+// marcadas para elas.
+export async function removerTrainees(pessoaIds) {
+  const temp = await temporadaAtiva();
+  if (!temp) return { ok: false, erro: 'Nenhuma temporada ativa.' };
+  const ids = [...new Set((pessoaIds || []).filter(Boolean))];
+  if (!ids.length) return { ok: false, erro: 'Selecione pelo menos um trainee.' };
+  const form = await sb.from('trainee_formacoes')
+    .delete().eq('temporada_id', temp.id).in('pessoa_id', ids);
+  if (form.error) return { ok: false, erro: form.error.message };
+  const { error } = await sb.from('trainees')
+    .delete().eq('temporada_id', temp.id).in('pessoa_id', ids);
+  if (error) return { ok: false, erro: error.message };
+  return { ok: true, n: ids.length };
+}
+
 export async function resetarTrainees() {
   const temp = await temporadaAtiva();
   if (!temp) return { ok: false, erro: 'Nenhuma temporada ativa.' };
