@@ -238,6 +238,17 @@ export async function getDrawPorData(dataISO) {
   return { salas: data.conteudo.salas || [], juizes: data.conteudo.juizes || [] };
 }
 
+// Todos os draws da temporada (rascunho ou publicado), com o conteúdo.
+// Serve para saber em que dias houve treino mesmo quando ninguém registrou
+// presença nem preencheu o tab.
+export async function getDrawsDaTemporada() {
+  const temp = await temporadaAtiva();
+  if (!temp) return [];
+  const { data } = await sb.from('draws')
+    .select('data,conteudo').eq('temporada_id', temp.id);
+  return (data || []).map((d) => ({ data: d.data, conteudo: d.conteudo || {} }));
+}
+
 // ── Speaker points ──────────────────────────────────────────
 // Registro feito pelo juiz da sala — sem senha (upsert idempotente).
 // lista = [{ pessoa_id, sala, posicao, speaks, juiz }]

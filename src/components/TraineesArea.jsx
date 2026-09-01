@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Card, { SectionLabel } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Alert from '@/components/ui/Alert';
@@ -7,9 +7,11 @@ import ConfirmModal from '@/components/ui/ConfirmModal';
 import { IconUsers, IconClock, IconChart, IconTrash, IconPlus } from '@/components/ui/Icons';
 import {
   getTrainees, getTraineeSemanas, getTraineeFormacoes, getPresencasRaw, getSpeaks,
-  getDatasPresenca, importarTrainees, resetarTrainees, criarSemana, editarSemana, apagarSemana,
-  toggleFormacao, marcarPresenca,
+  getDatasPresenca, getDrawsDaTemporada, importarTrainees, resetarTrainees,
+  criarSemana, editarSemana, apagarSemana, toggleFormacao, marcarPresenca,
 } from '@/lib/supabase';
+import { panelSala, semPar } from '@/lib/draw';
+import { norm } from '@/lib/data';
 import { calibrar, ranking } from '@/lib/speaks-stats';
 import { toast } from '@/lib/toast';
 
@@ -97,6 +99,7 @@ export default function TraineesArea({ senha }) {
   const [formacoes, setFormacoes] = useState(new Set()); // 'pessoaId-semanaId'
   const [presencas, setPresencas] = useState([]);
   const [datasPresenca, setDatasPresenca] = useState([]);
+  const [draws, setDraws] = useState([]);
   const [statsMap, setStatsMap] = useState(new Map());
   const [carregando, setCarregando] = useState(true);
 
@@ -107,13 +110,14 @@ export default function TraineesArea({ senha }) {
   function recarregar() {
     Promise.all([
       getTrainees(), getTraineeSemanas(), getTraineeFormacoes(),
-      getPresencasRaw(), getSpeaks(), getDatasPresenca(),
-    ]).then(([tr, sem, form, pres, speaks, datas]) => {
+      getPresencasRaw(), getSpeaks(), getDatasPresenca(), getDrawsDaTemporada(),
+    ]).then(([tr, sem, form, pres, speaks, datas, drw]) => {
       setTrainees(tr || []);
       setSemanas(sem || []);
       setFormacoes(new Set((form || []).map((f) => f.pessoa_id + '-' + f.semana_id)));
       setPresencas(pres || []);
       setDatasPresenca(datas || []);
+      setDraws(drw || []);
       const rank = ranking(calibrar(speaks || []));
       setStatsMap(new Map(rank.map((r) => [r.pessoaId, r])));
       setCarregando(false);
@@ -177,13 +181,56 @@ export default function TraineesArea({ senha }) {
     await toggleFormacao({ pessoaId, semanaId, feito });
   }
 
+  // Quem aparece em cada draw (debatedores + juízes), por data e já normalizado.
+  // Um treino pode ter draw sem ninguém ter registrado presença nem preenchido
+  // o tab — nesse caso o draw é a única evidência de quem esteve lá.
+  const nomesPorDraw = useMemo(() => {
+    const m = new Map();
+    draws.forEach((d) => {
+      const set = new Set();
+      (d.conteudo?.salas || []).forEach((sala) => {
+        (sala.posicoes || []).forEach((pos) => {
+          if (pos.p1) set.add(norm(pos.p1));
+          if (!semPar(pos.p2)) set.add(norm(pos.p2));
+        });
+        panelSala(sala).forEach((j) => { if (j) set.add(norm(j)); });
+      });
+      (d.conteudo?.juizes || []).forEach((j) => { if (j) set.add(norm(j)); });
+      m.set(d.data, set);
+    });
+    return m;
+  }, [draws]);
+
+  // Dias em que houve treino: presença registrada OU draw gerado.
+  const datasTreino = useMemo(
+    () => [...new Set([...datasPresenca, ...draws.map((d) => d.data)])].sort().reverse(),
+    [datasPresenca, draws]
+  );
+
+  const nomeNormDe = useMemo(
+    () => new Map(trainees.map((t) => [t.pessoaId, norm(t.nome)])),
+    [trainees]
+  );
+
+  // Data do treino da semana em que a pessoa esteve — prefere o dia do draw
+  // em que ela aparece, para a presença cair no dia certo.
+  function dataDoTreino(pessoaId, sem) {
+    const naSemana = datasTreino.filter((d) => d >= sem.data_inicio && d <= sem.data_fim);
+    const n = nomeNormDe.get(pessoaId);
+    if (n) {
+      const comEla = naSemana.find((d) => (nomesPorDraw.get(d) || new Set()).has(n));
+      if (comEla) return comEla;
+    }
+    return naSemana[0] || sem.data_inicio;
+  }
+
   async function togglePresenca(pessoaId, sem) {
-    const presente = !presenteNa(pessoaId, sem);
+    const estado = presencaNa(pessoaId, sem);
+    const presente = estado !== 'registrada';
     const anterior = presencas;
     let data;
     if (presente) {
-      data = datasPresenca.find((d) => d >= sem.data_inicio && d <= sem.data_fim)
-        || sem.data_inicio;
+      data = dataDoTreino(pessoaId, sem);
       setPresencas((cur) => [...cur, { pessoa_id: pessoaId, data }]);
     } else {
       const reg = presencas.find((p) => p.pessoa_id === pessoaId
@@ -199,9 +246,20 @@ export default function TraineesArea({ senha }) {
     }
   }
 
+  // 'registrada' = tem linha em presencas · 'draw' = só aparece no draw da semana.
+  function presencaNa(pessoaId, sem) {
+    if (presencas.some((p) => p.pessoa_id === pessoaId
+      && p.data >= sem.data_inicio && p.data <= sem.data_fim)) return 'registrada';
+    const n = nomeNormDe.get(pessoaId);
+    if (n) {
+      for (const [data, nomes] of nomesPorDraw) {
+        if (data >= sem.data_inicio && data <= sem.data_fim && nomes.has(n)) return 'draw';
+      }
+    }
+    return null;
+  }
   function presenteNa(pessoaId, sem) {
-    return presencas.some((p) => p.pessoa_id === pessoaId
-      && p.data >= sem.data_inicio && p.data <= sem.data_fim);
+    return presencaNa(pessoaId, sem) !== null;
   }
   function metricasDe(pid) {
     const treinos = semanas.filter((s) => presenteNa(pid, s)).length;
@@ -210,11 +268,11 @@ export default function TraineesArea({ senha }) {
     return { treinos, forms, rodadas: st.rodadas, media: st.mediaCrua, nivel: st.nivel };
   }
 
-  // semanas (seg–dom) que já têm treino registrado e ainda não foram criadas
+  // semanas (seg–dom) que já tiveram treino e ainda não foram criadas
   const semanasCriadas = new Set(semanas.map((s) => s.data_inicio));
   const semanasDisponiveis = [];
   const vistas = new Set();
-  datasPresenca.forEach((d) => {
+  datasTreino.forEach((d) => {
     const w = semanaDe(d);
     if (vistas.has(w.inicio)) return;
     vistas.add(w.inicio);
@@ -274,7 +332,8 @@ export default function TraineesArea({ senha }) {
         <p className="text-xs text-muted mb-3">
           Uma <span className="text-text">semana</span> é um período de segunda a domingo —
           uma só por semana do calendário. Ela agrupa o treino e as tarefas daquele período:
-          a presença em qualquer treino da semana entra na coluna correspondente. A numeração
+          a presença em qualquer treino da semana entra na coluna correspondente. Vale como
+          treino tanto o dia com presença registrada quanto o dia que só teve draw gerado. A numeração
           (Semana 1, 2, 3…) é automática pela ordem.
         </p>
         {semanas.length > 0 && (
@@ -298,7 +357,7 @@ export default function TraineesArea({ senha }) {
           </div>
         )}
         <div className="text-[10px] uppercase tracking-[0.15em] text-muted mb-1.5">
-          Adicionar semana — escolha uma semana com treino registrado
+          Adicionar semana — escolha uma semana que teve treino (presença ou draw)
         </div>
         {semanasDisponiveis.length > 0 ? (
           <div className="flex flex-wrap gap-2">
@@ -312,8 +371,8 @@ export default function TraineesArea({ senha }) {
           </div>
         ) : (
           <p className="text-[11px] text-muted">
-            {datasPresenca.length === 0
-              ? 'Registre presença em treinos para poder criar semanas.'
+            {datasTreino.length === 0
+              ? 'Gere um draw ou registre presença em um treino para poder criar semanas.'
               : 'Todas as semanas com treino já foram criadas.'}
           </p>
         )}
@@ -332,6 +391,11 @@ export default function TraineesArea({ senha }) {
               <strong className="text-success">P</strong> = presença no treino — vem automática,
               toque para corrigir ·{' '}
               <strong className="text-gold">F</strong> = formação feita — toque para marcar.
+            </p>
+            <p className="text-[11px] text-muted mb-3">
+              O <strong className="text-success">P</strong> tracejado significa que a pessoa está
+              no draw daquela semana mas não tem presença registrada — conta como treino e vira
+              registro fixo se você tocar nele.
             </p>
             <div className="space-y-5">
               {Object.entries(grupos).map(([mentor, lista]) => (
@@ -365,24 +429,31 @@ export default function TraineesArea({ senha }) {
                               <td className="px-2 py-1 font-semibold sticky left-0 bg-surface
                                 max-w-[110px] sm:max-w-none truncate" title={t.nome}>{t.nome}</td>
                               {semanas.map((s) => {
-                                const pres = presenteNa(t.pessoaId, s);
+                                const pres = presencaNa(t.pessoaId, s);
                                 const feito = formacoes.has(t.pessoaId + '-' + s.id);
                                 return (
                                   <td key={s.id} className="px-2 py-1">
                                     <div className="flex gap-2 justify-center">
-                                      <button title="Presença no treino — toque para corrigir"
+                                      <button
+                                        title={pres === 'registrada'
+                                          ? 'Presença registrada — toque para remover'
+                                          : pres === 'draw'
+                                            ? 'Estava no draw da semana, sem presença registrada — toque para registrar'
+                                            : 'Sem presença — toque para marcar'}
                                         onClick={() => togglePresenca(t.pessoaId, s)}
                                         className={`w-10 h-10 rounded-lg grid place-items-center text-[12px]
-                                          font-bold border transition ${pres
-                                            ? 'bg-success/25 text-success border-success/50'
-                                            : 'bg-surface-2 text-muted/40 border-border hover:border-success hover:text-success'}`}>
+                                          font-bold border transition ${pres === 'registrada'
+                                            ? 'bg-[#4caf7d40] text-success border-[#4caf7d80]'
+                                            : pres === 'draw'
+                                              ? 'bg-surface-2 text-[#4caf7dcc] border-dashed border-[#4caf7d80]'
+                                              : 'bg-surface-2 text-muted/40 border-border hover:border-success hover:text-success'}`}>
                                         P
                                       </button>
                                       <button title="Formação feita — toque para marcar"
                                         onClick={() => toggle(t.pessoaId, s.id)}
                                         className={`w-10 h-10 rounded-lg grid place-items-center text-[12px]
                                           font-bold border transition ${feito
-                                            ? 'bg-gold/30 text-gold border-gold/50'
+                                            ? 'bg-[#cda96340] text-gold border-[#cda96380]'
                                             : 'bg-surface-2 text-muted/40 border-border hover:border-gold hover:text-gold'}`}>
                                         F
                                       </button>
