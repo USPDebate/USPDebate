@@ -104,6 +104,7 @@ export default function TraineesArea({ senha }) {
   const [carregando, setCarregando] = useState(true);
 
   const [csv, setCsv] = useState('');
+  const [dataNova, setDataNova] = useState('');
   const [alerta, setAlerta] = useState(null);
   const [modalReset, setModalReset] = useState(false);
 
@@ -149,8 +150,25 @@ export default function TraineesArea({ senha }) {
     else setAlerta({ tipo: 'error', msg: res.erro });
   }
   async function addSemana(w) {
+    if (semanas.some((s) => s.data_inicio === w.inicio)) {
+      toast('error', 'Essa semana já foi criada.');
+      return false;
+    }
     const res = await criarSemana({ inicio: w.inicio, fim: w.fim });
-    if (res.ok) recarregar(); else setAlerta({ tipo: 'error', msg: res.erro });
+    if (res.ok) { recarregar(); return true; }
+    setAlerta({ tipo: 'error', msg: res.erro });
+    return false;
+  }
+
+  // Semana avulsa: a pessoa informa um dia qualquer e criamos a segunda–domingo
+  // que o contém. Serve para semana sem treino (feriado, tarefa sem encontro).
+  async function addSemanaAvulsa() {
+    if (!dataNova) {
+      toast('error', 'Informe uma data no formato dd/mm/aaaa.');
+      return;
+    }
+    const ok = await addSemana(semanaDe(dataNova));
+    if (ok) setDataNova('');
   }
   async function editarData(sem, campo, valor) {
     if (!valor) return;
@@ -346,7 +364,7 @@ export default function TraineesArea({ senha }) {
           </div>
         )}
         <div className="text-[10px] uppercase tracking-[0.15em] text-muted mb-1.5">
-          Adicionar semana — escolha uma semana que teve treino (presença ou draw)
+          Semanas que tiveram treino (presença ou draw)
         </div>
         {semanasDisponiveis.length > 0 ? (
           <div className="flex flex-wrap gap-2">
@@ -361,10 +379,32 @@ export default function TraineesArea({ senha }) {
         ) : (
           <p className="text-[11px] text-muted">
             {datasTreino.length === 0
-              ? 'Gere um draw ou registre presença em um treino para poder criar semanas.'
+              ? 'Nenhum treino registrado ainda — use o campo abaixo para criar a semana mesmo assim.'
               : 'Todas as semanas com treino já foram criadas.'}
           </p>
         )}
+
+        <div className="mt-3 pt-3 border-t border-border">
+          <div className="text-[10px] uppercase tracking-[0.15em] text-muted mb-1.5">
+            Semana avulsa — sem treino nem draw
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <DataBR value={dataNova} onCommit={setDataNova} />
+            <button onClick={addSemanaAvulsa}
+              className="text-[12px] border border-border rounded-lg px-3 py-2 text-muted
+                hover:border-bordo hover:text-bordo transition">
+              + Adicionar semana
+            </button>
+            {dataNova && (
+              <span className="text-[11px] text-muted">
+                Semana de {fmtCurto(semanaDe(dataNova).inicio)} a {fmtCurto(semanaDe(dataNova).fim)}
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-muted mt-1.5">
+            Informe qualquer dia da semana desejada — ela é criada de segunda a domingo.
+          </p>
+        </div>
       </Card>
 
       {/* Grade de acompanhamento */}
