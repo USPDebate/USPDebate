@@ -1,3 +1,5 @@
+import { norm } from '@/lib/data';
+
 // Estilos das posições BP (dark theme).
 export const POS_STYLE = {
   OG: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
@@ -59,4 +61,21 @@ export function ordenarPosicoes(posicoes) {
   return [...posicoes].sort(
     (a, b) => (ORDEM_BP[a.posicao] ?? 99) - (ORDEM_BP[b.posicao] ?? 99)
   );
+}
+
+// Todos os nomes que aparecem num draw ({ salas, juizes }), normalizados:
+// debatedores das duplas, juízes de sala e juízes gerais. Serve para saber
+// quem já está no draw e quem esteve no treino sem ter sido alocado.
+export function nomesDoDraw(draw) {
+  const set = new Set();
+  if (!draw) return set;
+  (draw.salas || []).forEach((sala) => {
+    (sala.posicoes || []).forEach((pos) => {
+      if (pos.p1) set.add(norm(pos.p1));
+      if (!semPar(pos.p2)) set.add(norm(pos.p2));
+    });
+    panelSala(sala).forEach((j) => { if (j) set.add(norm(j)); });
+  });
+  (draw.juizes || []).forEach((j) => { if (j) set.add(norm(j)); });
+  return set;
 }

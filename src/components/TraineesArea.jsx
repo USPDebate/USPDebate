@@ -10,7 +10,7 @@ import {
   getDatasPresenca, getDrawsDaTemporada, importarTrainees, resetarTrainees,
   criarSemana, editarSemana, apagarSemana, toggleFormacao, marcarPresenca,
 } from '@/lib/supabase';
-import { panelSala, semPar } from '@/lib/draw';
+import { nomesDoDraw } from '@/lib/draw';
 import { norm } from '@/lib/data';
 import { calibrar, ranking } from '@/lib/speaks-stats';
 import { toast } from '@/lib/toast';
@@ -186,18 +186,7 @@ export default function TraineesArea({ senha }) {
   // o tab — nesse caso o draw é a única evidência de quem esteve lá.
   const nomesPorDraw = useMemo(() => {
     const m = new Map();
-    draws.forEach((d) => {
-      const set = new Set();
-      (d.conteudo?.salas || []).forEach((sala) => {
-        (sala.posicoes || []).forEach((pos) => {
-          if (pos.p1) set.add(norm(pos.p1));
-          if (!semPar(pos.p2)) set.add(norm(pos.p2));
-        });
-        panelSala(sala).forEach((j) => { if (j) set.add(norm(j)); });
-      });
-      (d.conteudo?.juizes || []).forEach((j) => { if (j) set.add(norm(j)); });
-      m.set(d.data, set);
-    });
+    draws.forEach((d) => m.set(d.data, nomesDoDraw(d.conteudo)));
     return m;
   }, [draws]);
 
