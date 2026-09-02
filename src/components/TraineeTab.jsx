@@ -5,15 +5,17 @@ import Button from '@/components/ui/Button';
 import Alert from '@/components/ui/Alert';
 import Autocomplete from '@/components/ui/Autocomplete';
 import OlhoBigBrother from '@/components/ui/OlhoBigBrother';
-import { IconLock, IconUser, IconUpload, IconCheck, IconClock } from '@/components/ui/Icons';
+import Visualizador from '@/components/ui/Visualizador';
+import { IconLock, IconUser, IconUpload, IconCheck, IconClock, IconTrash } from '@/components/ui/Icons';
 import {
   verificarSenhaTrainee, getTrainees, getTraineeSemanas, getDemandas, getEnvios,
-  enviarFormacao, urlDaImagem,
+  enviarFormacao, removerImagemFormacao, urlDaImagem,
 } from '@/lib/supabase';
 import { comprimirImagem } from '@/lib/imagem';
 import { toast } from '@/lib/toast';
 
 const SESSAO = 'uspd_trainee';
+const MAX_IMAGENS = 4;
 const DIAS = 30 * 24 * 60 * 60 * 1000;
 
 function fmtBR(iso) {
@@ -47,6 +49,7 @@ export default function TraineeTab() {
   const [nomeOk, setNomeOk] = useState(false);
   const [enviando, setEnviando] = useState(null);   // id da demanda em envio
   const [olho, setOlho] = useState(false);
+  const [visual, setVisual] = useState(null);   // { urls, indice }
   const inputs = useRef({});
 
   useEffect(() => {
@@ -117,19 +120,48 @@ export default function TraineeTab() {
   const hoje = hojeISO();
   const semanaAtual = semanas.find((s) => hoje >= s.data_inicio && hoje <= s.data_fim) || null;
 
-  async function onArquivo(demandaId, file) {
-    if (!file || !eu) return;
+  async function onArquivos(demandaId, files) {
+    const lista = Array.from(files || []);
+    if (!lista.length || !eu) return;
+    const atual = envioDe(demandaId);
+    const jaTem = atual && atual.paths ? atual.paths.length : 0;
+    const cabem = MAX_IMAGENS - jaTem;
+    if (cabem <= 0) {
+      toast('error', `Já são ${MAX_IMAGENS} imagens nesta formação. Remova uma antes.`);
+      return;
+    }
+    if (lista.length > cabem) {
+      toast('info', `Cabem mais ${cabem} imagem(ns) nesta formação — o resto foi ignorado.`);
+    }
+
     setEnviando(demandaId);
-    const c = await comprimirImagem(file);
-    if (c.erro) { toast('error', c.erro); setEnviando(null); return; }
-    const res = await enviarFormacao({
-      senha, pessoaId: eu.pessoaId, demandaId, blob: c.blob, ext: c.ext,
-    });
+    let enviadas = 0;
+    let erro = null;
+    for (const f of lista.slice(0, cabem)) {
+      const c = await comprimirImagem(f);
+      if (c.erro) { erro = c.erro; continue; }
+      const res = await enviarFormacao({
+        senha, pessoaId: eu.pessoaId, demandaId, blob: c.blob, ext: c.ext,
+      });
+      if (res.ok) enviadas += 1; else erro = res.erro;
+    }
     setEnviando(null);
     if (inputs.current[demandaId]) inputs.current[demandaId].value = '';
+
+    if (enviadas > 0) {
+      toast('success', enviadas === 1 ? 'Formação enviada!' : `${enviadas} imagens enviadas!`);
+      if (Math.random() < 0.1) setOlho(true);
+    }
+    if (erro) toast('error', erro);
+    getEnvios().then((e) => setEnvios(e || []));
+  }
+
+  async function removerImagem(demandaId, path) {
+    const res = await removerImagemFormacao({
+      senha, pessoaId: eu.pessoaId, demandaId, path,
+    });
     if (!res.ok) { toast('error', res.erro); return; }
-    toast('success', 'Formação enviada!');
-    if (Math.random() < 0.1) setOlho(true);
+    toast('success', 'Imagem removida.');
     getEnvios().then((e) => setEnvios(e || []));
   }
 
@@ -206,7 +238,9 @@ export default function TraineeTab() {
       numero: numeroSemana(d.semana_id),
       daSemanaAtual: !!(semanaAtual && sem && sem.id === semanaAtual.id),
       ocupado: enviando === d.id,
-      onArquivo,
+      onArquivos,
+      onRemover: removerImagem,
+      onAbrir: (urls, indice) => setVisual({ urls, indice }),
       refInput: (el) => { inputs.current[d.id] = el; },
     };
   };
@@ -220,6 +254,10 @@ export default function TraineeTab() {
   return (
     <div className="space-y-3">
       {olho && <OlhoBigBrother onFechar={() => setOlho(false)} />}
+      {visual && (
+        <Visualizador urls={visual.urls} indice={visual.indice}
+          onFechar={() => setVisual(null)} />
+      )}
 
       <Card style={{ animationDelay: '.05s' }}>
         <SectionLabel icon={IconUser} right={
@@ -269,8 +307,13 @@ export default function TraineeTab() {
   );
 }
 
-function Cartao({ d, e, hoje, sem, numero, daSemanaAtual, ocupado, onArquivo, refInput }) {
+function Cartao({ d, e, hoje, sem, numero, daSemanaAtual, ocupado,
+  onArquivos, onRemover, onAbrir, refInput }) {
   const atrasadoAgora = !e && d.prazo < hoje;
+  const paths = (e && e.paths) || [];
+  const urls = paths.map(urlDaImagem);
+  const verificada = !!(e && e.verificado_em);
+  const cheio = paths.length >= MAX_IMAGENS;
 
   return (
     <div className={`rounded-xl2 border p-4 bg-surface-2 transition
@@ -290,34 +333,66 @@ function Cartao({ d, e, hoje, sem, numero, daSemanaAtual, ocupado, onArquivo, re
       )}
       <div className="text-[11px] text-muted mb-3">Prazo: {fmtBR(d.prazo)}</div>
 
-      {e && !e.imagem_apagada && (
-        <a href={urlDaImagem(e.path)} target="_blank" rel="noreferrer"
-          className="block mb-3 rounded-lg overflow-hidden border border-border max-w-[220px]">
-          <img src={urlDaImagem(e.path)} alt="Formação enviada"
-            loading="lazy" className="w-full h-auto block" />
-        </a>
+      {e && e.imagem_apagada && (
+        <p className="text-[11px] text-muted mb-3">
+          As imagens desta entrega já foram apagadas do armazenamento.
+        </p>
       )}
 
-      {!e || !e.verificado_em ? (
-        <>
+      {paths.length > 0 && !e.imagem_apagada && (
+        <div className="flex gap-2 flex-wrap mb-3">
+          {paths.map((pth, k) => (
+            <div key={pth} className="relative">
+              <button onClick={() => onAbrir(urls, k)}
+                className="block w-20 h-20 rounded-lg overflow-hidden border border-border
+                  hover:border-bordo transition">
+                <img src={urls[k]} alt={`Imagem ${k + 1}`} loading="lazy"
+                  className="w-full h-full object-cover" />
+              </button>
+              {!verificada && (
+                <button
+                  onClick={() => onRemover(d.id, pth)}
+                  title="Remover esta imagem"
+                  className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full grid place-items-center
+                    bg-surface border border-[#e0625a80] text-danger">
+                  <IconTrash className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!verificada ? (
+        <div className="flex items-center gap-3 flex-wrap">
           <input
             ref={refInput}
             id={`arq-${d.id}`}
             type="file"
             accept="image/*"
+            multiple
             className="hidden"
-            onChange={(ev) => onArquivo(d.id, ev.target.files && ev.target.files[0])}
+            disabled={ocupado || cheio}
+            onChange={(ev) => onArquivos(d.id, ev.target.files)}
           />
           <label htmlFor={`arq-${d.id}`}
             className={`inline-flex items-center gap-2 text-[12px] rounded-lg px-3.5 py-2.5
-              border transition cursor-pointer
-              ${ocupado
-                ? 'border-border text-muted cursor-wait'
-                : 'border-bordo text-bordo hover:bg-[#c140591a]'}`}>
+              border transition
+              ${ocupado || cheio
+                ? 'border-border text-muted cursor-not-allowed'
+                : 'border-bordo text-bordo hover:bg-[#c140591a] cursor-pointer'}`}>
             <IconUpload className="w-4 h-4" />
-            {ocupado ? 'Enviando…' : (e ? 'Enviar outra imagem' : 'Enviar imagem')}
+            {ocupado
+              ? 'Enviando…'
+              : cheio
+                ? `Limite de ${MAX_IMAGENS} imagens`
+                : (paths.length ? 'Adicionar imagem' : 'Enviar imagem')}
           </label>
-        </>
+          <span className="text-[11px] text-muted">
+            {paths.length} de {MAX_IMAGENS} imagens
+            {!cheio && ' · dá para escolher várias de uma vez'}
+          </span>
+        </div>
       ) : (
         <div className="inline-flex items-center gap-2 text-[12px] text-success">
           <IconCheck className="w-4 h-4" />

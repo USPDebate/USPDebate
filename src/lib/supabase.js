@@ -586,7 +586,7 @@ export async function getEnvios() {
   const ids = (dem || []).map((d) => d.id);
   if (!ids.length) return [];
   const { data } = await sb.from('formacao_envios')
-    .select('id,demanda_id,pessoa_id,path,enviado_em,atrasado,verificado_em,imagem_apagada')
+    .select('id,demanda_id,pessoa_id,paths,enviado_em,atrasado,verificado_em,imagem_apagada')
     .in('demanda_id', ids);
   return data || [];
 }
@@ -608,6 +608,17 @@ export async function enviarFormacao({ senha, pessoaId, demandaId, blob, ext }) 
   });
   if (error) return { ok: false, erro: error.message };
   return { ok: true, path };
+}
+
+// Tira uma imagem da entrega (mandou a página errada). Se sobrar zero, a
+// entrega inteira volta a ficar pendente.
+export async function removerImagemFormacao({ senha, pessoaId, demandaId, path }) {
+  const { error } = await sb.rpc('remover_imagem_formacao', {
+    p_senha: senha, p_pessoa_id: pessoaId, p_demanda_id: demandaId, p_path: path,
+  });
+  if (error) return { ok: false, erro: error.message };
+  await apagarArquivos([path]);
+  return { ok: true };
 }
 
 export async function criarDemanda({ senha, semanaId, titulo, descricao, prazo, ordem }) {

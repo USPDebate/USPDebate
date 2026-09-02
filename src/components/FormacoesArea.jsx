@@ -5,6 +5,7 @@ import Button from '@/components/ui/Button';
 import Alert from '@/components/ui/Alert';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import DataBR from '@/components/ui/DataBR';
+import Visualizador from '@/components/ui/Visualizador';
 import { IconPlus, IconCheck, IconImage, IconTrash, IconClock } from '@/components/ui/Icons';
 import {
   getTraineeSemanas, getTrainees, getDemandas, getEnvios, criarDemanda, editarDemanda,
@@ -39,7 +40,7 @@ export default function FormacoesArea({ senha }) {
   const [editando, setEditando] = useState(null);   // { id, titulo, descricao, prazo }
   const [demandaSel, setDemandaSel] = useState(null);
   const [sel, setSel] = useState(new Set());
-  const [zoom, setZoom] = useState(null);
+  const [visual, setVisual] = useState(null);   // { urls, indice }
   const [alerta, setAlerta] = useState(null);
   const [confirmar, setConfirmar] = useState(null); // { titulo, mensagem, acao }
   const [limpezaAntes, setLimpezaAntes] = useState(isoMenos(28));
@@ -129,7 +130,7 @@ export default function FormacoesArea({ senha }) {
   function pedirRecusar(envio, nome) {
     setConfirmar({
       titulo: 'Recusar este envio?',
-      mensagem: `A imagem de ${nome} é apagada e ele(a) pode enviar de novo.`,
+      mensagem: `As imagens de ${nome} são apagadas e ele(a) pode enviar de novo.`,
       acao: async () => {
         const res = await apagarEnvio({ senha, id: envio.id });
         if (!res.ok) { toast('error', res.erro); return; }
@@ -163,6 +164,9 @@ export default function FormacoesArea({ senha }) {
   const entregues = linhas.filter((l) => l.e);
   const verificadas = entregues.filter((l) => l.e.verificado_em);
   const atrasadas = entregues.filter((l) => l.e.atrasado);
+
+  const urlsDe = (e) =>
+    (e && !e.imagem_apagada && Array.isArray(e.paths) ? e.paths : []).map(urlDaImagem);
 
   function toggleSel(id) {
     setSel((cur) => {
@@ -373,13 +377,21 @@ export default function FormacoesArea({ senha }) {
                 <div key={t.pessoaId}
                   className={`rounded-xl border overflow-hidden bg-surface-2 transition
                     ${marcada ? 'border-bordo' : 'border-border'}`}>
-                  <div className="aspect-[4/3] bg-[#120c0e] grid place-items-center overflow-hidden">
-                    {e && !e.imagem_apagada ? (
-                      <img
-                        src={urlDaImagem(e.path)} alt={t.nome} loading="lazy"
-                        onClick={() => setZoom(urlDaImagem(e.path))}
-                        className="w-full h-full object-cover cursor-zoom-in"
-                      />
+                  <div className="relative aspect-[4/3] bg-[#120c0e] grid place-items-center overflow-hidden">
+                    {urlsDe(e).length > 0 ? (
+                      <>
+                        <img
+                          src={urlsDe(e)[0]} alt={t.nome} loading="lazy"
+                          onClick={() => setVisual({ urls: urlsDe(e), indice: 0 })}
+                          className="w-full h-full object-cover cursor-zoom-in"
+                        />
+                        {urlsDe(e).length > 1 && (
+                          <span className="absolute bottom-1.5 right-1.5 text-[10px] font-semibold
+                            rounded-full px-2 py-0.5 bg-black/70 text-[#f6f2f3]">
+                            {urlsDe(e).length} imagens
+                          </span>
+                        )}
+                      </>
                     ) : (
                       <span className="text-[10px] uppercase tracking-wider text-muted px-2 text-center">
                         {e ? 'imagem apagada' : 'não entregou'}
@@ -437,11 +449,9 @@ export default function FormacoesArea({ senha }) {
         </div>
       </Card>
 
-      {zoom && (
-        <div onClick={() => setZoom(null)}
-          className="fixed inset-0 z-[160] grid place-items-center p-4 bg-black/85 cursor-zoom-out">
-          <img src={zoom} alt="Formação" className="max-w-full max-h-full rounded-lg" />
-        </div>
+      {visual && (
+        <Visualizador urls={visual.urls} indice={visual.indice}
+          onFechar={() => setVisual(null)} />
       )}
 
       <ConfirmModal

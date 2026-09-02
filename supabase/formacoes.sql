@@ -46,11 +46,14 @@ create index if not exists formacao_demandas_semana on formacao_demandas (semana
 
 -- Envio do trainee. A linha existir = enviado; verificado_em = aprovado.
 -- 'atrasado' é etiqueta, não bloqueio: entrega fora do prazo entra normal.
+-- 'paths' é lista: um resumo comprido pode precisar de mais de uma foto.
+-- Continua UMA linha por (demanda, pessoa) — a verificação é da entrega
+-- inteira, não de cada imagem.
 create table if not exists formacao_envios (
   id             bigint generated always as identity primary key,
   demanda_id     bigint not null references formacao_demandas(id) on delete cascade,
   pessoa_id      bigint not null references pessoas(id),
-  path           text   not null,
+  paths          text[] not null default '{}',
   enviado_em     timestamptz not null default now(),
   atrasado       boolean not null default false,
   verificado_em  timestamptz,
@@ -58,6 +61,23 @@ create table if not exists formacao_envios (
 );
 create unique index if not exists formacao_envios_unico
   on formacao_envios (demanda_id, pessoa_id);
+
+-- Migração de quem já rodou a versão de uma imagem só.
+alter table formacao_envios add column if not exists paths text[] not null default '{}';
+do $mig$
+begin
+  if exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'formacao_envios'
+       and column_name = 'path'
+  ) then
+    update formacao_envios
+       set paths = array[path]
+     where path is not null and coalesce(array_length(paths, 1), 0) = 0;
+    alter table formacao_envios drop column path;
+  end if;
+end
+$mig$;
 
 -- ─── RLS ────────────────────────────────────────────────────
 -- Leitura pública (a área do trainee e o grid do admin precisam ler).
@@ -156,7 +176,10 @@ as $$
 begin
   perform _checar_admin(p_senha);
   return query
-    delete from formacao_envios e where e.demanda_id = p_id returning e.path;
+    with apagados as (
+      delete from formacao_envios e where e.demanda_id = p_id returning e.paths
+    )
+    select unnest(apagados.paths) from apagados;
   delete from formacao_demandas where id = p_id;
 end;
 $$;
@@ -173,7 +196,7 @@ language plpgsql
 security definer
 set search_path = public
 as $$
-declare v_prazo date;
+declare v_prazo date; v_n int;
 begin
   perform _checar_trainee(p_senha);
   if coalesce(btrim(p_path), '') = '' then
@@ -191,16 +214,57 @@ begin
     raise exception 'Este envio já foi verificado. Fale com a diretoria para reabrir.';
   end if;
 
+  select coalesce(array_length(e.paths, 1), 0) into v_n
+    from formacao_envios e
+   where e.demanda_id = p_demanda_id and e.pessoa_id = p_pessoa_id;
+  if coalesce(v_n, 0) >= 4 then
+    raise exception 'Limite de 4 imagens por formação. Remova uma antes de enviar outra.';
+  end if;
+
+  -- 'atrasado' fica com o valor do PRIMEIRO envio: mandar uma página
+  -- complementar depois não deve marcar a entrega inteira como atrasada.
   insert into formacao_envios
-    (demanda_id, pessoa_id, path, enviado_em, atrasado, imagem_apagada)
+    (demanda_id, pessoa_id, paths, enviado_em, atrasado, imagem_apagada)
   values
-    (p_demanda_id, p_pessoa_id, btrim(p_path), now(), current_date > v_prazo, false)
+    (p_demanda_id, p_pessoa_id, array[btrim(p_path)], now(), current_date > v_prazo, false)
   on conflict (demanda_id, pessoa_id) do update
-    set path = excluded.path, enviado_em = excluded.enviado_em,
-        atrasado = excluded.atrasado, imagem_apagada = false;
+    set paths = formacao_envios.paths || excluded.paths,
+        enviado_em = excluded.enviado_em,
+        imagem_apagada = false;
 end;
 $$;
 grant execute on function enviar_formacao(text, bigint, bigint, text) to anon;
+
+-- Tira uma imagem da entrega — o trainee mandou a página errada e quer trocar.
+-- Se sobrar zero imagem, a entrega inteira sai (volta a ficar pendente).
+create or replace function remover_imagem_formacao(
+  p_senha text, p_pessoa_id bigint, p_demanda_id bigint, p_path text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform _checar_trainee(p_senha);
+  if exists (
+    select 1 from formacao_envios
+     where demanda_id = p_demanda_id and pessoa_id = p_pessoa_id
+       and verificado_em is not null
+  ) then
+    raise exception 'Esta formação já foi verificada.';
+  end if;
+
+  update formacao_envios
+     set paths = array_remove(paths, p_path)
+   where demanda_id = p_demanda_id and pessoa_id = p_pessoa_id;
+
+  delete from formacao_envios
+   where demanda_id = p_demanda_id and pessoa_id = p_pessoa_id
+     and coalesce(array_length(paths, 1), 0) = 0;
+end;
+$$;
+grant execute on function remover_imagem_formacao(text, bigint, bigint, text) to anon;
 
 -- ─── Verificação em lote (admin) ────────────────────────────
 -- Marca/desmarca os envios e recalcula o "F" da grade de acompanhamento:
@@ -262,7 +326,10 @@ as $$
 begin
   perform _checar_admin(p_senha);
   return query
-    delete from formacao_envios e where e.id = p_id returning e.path;
+    with apagados as (
+      delete from formacao_envios e where e.id = p_id returning e.paths
+    )
+    select unnest(apagados.paths) from apagados;
 end;
 $$;
 grant execute on function apagar_envio(text, bigint) to anon;
@@ -279,13 +346,16 @@ as $$
 begin
   perform _checar_admin(p_senha);
   return query
-    update formacao_envios e
-       set imagem_apagada = true
-      from formacao_demandas d
-     where d.id = e.demanda_id
-       and d.prazo < p_antes
-       and not e.imagem_apagada
-    returning e.path;
+    with limpos as (
+      update formacao_envios e
+         set imagem_apagada = true
+        from formacao_demandas d
+       where d.id = e.demanda_id
+         and d.prazo < p_antes
+         and not e.imagem_apagada
+      returning e.paths
+    )
+    select unnest(limpos.paths) from limpos;
 end;
 $$;
 grant execute on function limpar_imagens_formacao(text, date) to anon;
