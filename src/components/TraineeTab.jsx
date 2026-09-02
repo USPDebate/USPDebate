@@ -16,8 +16,8 @@ import { toast } from '@/lib/toast';
 
 const SESSAO = 'uspd_trainee';
 const MAX_IMAGENS = 4;
-// TEMPORÁRIO: 1 = sempre, para testar o easter egg. Valor normal: 0.1
-const CHANCE_OLHO = 1;
+// Chance de o easter egg aparecer num envio bem-sucedido.
+const CHANCE_OLHO = 0.1;
 const DIAS = 30 * 24 * 60 * 60 * 1000;
 
 function fmtBR(iso) {
