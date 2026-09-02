@@ -8,7 +8,7 @@ import DataBR from '@/components/ui/DataBR';
 import Visualizador from '@/components/ui/Visualizador';
 import { IconPlus, IconCheck, IconImage, IconTrash, IconClock } from '@/components/ui/Icons';
 import {
-  getTraineeSemanas, getTrainees, getDemandas, getEnvios, criarDemanda, editarDemanda,
+  getTraineeSemanas, getTrainees, getFormacoes, criarDemanda, editarDemanda,
   apagarDemanda, verificarFormacoes, apagarEnvio, limparImagensFormacao, urlDaImagem,
 } from '@/lib/supabase';
 import { toast } from '@/lib/toast';
@@ -47,15 +47,22 @@ export default function FormacoesArea({ senha }) {
 
   function recarregar() {
     setCarregando(true);
-    Promise.all([getTraineeSemanas(), getTrainees(), getDemandas(), getEnvios()])
-      .then(([sem, tr, dem, env]) => {
+    Promise.all([getTraineeSemanas(), getTrainees(), getFormacoes()])
+      .then(([sem, tr, f]) => {
         setSemanas(sem || []);
         setTrainees(tr || []);
-        setDemandas(dem || []);
-        setEnvios(env || []);
+        setDemandas(f.demandas || []);
+        setEnvios(f.envios || []);
+        setAlerta(f.erro
+          ? { tipo: 'error', msg: 'Não consegui ler as formações: ' + f.erro
+              + '. Se fala em coluna "paths", falta rodar o formacoes.sql no Supabase.' }
+          : null);
         setCarregando(false);
       })
-      .catch(() => setCarregando(false));
+      .catch((e) => {
+        setAlerta({ tipo: 'error', msg: String(e.message || e) });
+        setCarregando(false);
+      });
   }
   useEffect(() => { recarregar(); }, []);
 

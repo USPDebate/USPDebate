@@ -8,7 +8,7 @@ import OlhoBigBrother from '@/components/ui/OlhoBigBrother';
 import Visualizador from '@/components/ui/Visualizador';
 import { IconLock, IconUser, IconUpload, IconCheck, IconClock, IconTrash } from '@/components/ui/Icons';
 import {
-  verificarSenhaTrainee, getTrainees, getTraineeSemanas, getDemandas, getEnvios,
+  verificarSenhaTrainee, getTrainees, getTraineeSemanas, getFormacoes,
   enviarFormacao, removerImagemFormacao, urlDaImagem,
 } from '@/lib/supabase';
 import { comprimirImagem } from '@/lib/imagem';
@@ -44,6 +44,7 @@ export default function TraineeTab() {
   const [demandas, setDemandas] = useState([]);
   const [envios, setEnvios] = useState([]);
   const [carregando, setCarregando] = useState(false);
+  const [erroDados, setErroDados] = useState(null);
 
   const [nome, setNome] = useState('');
   const [nomeOk, setNomeOk] = useState(false);
@@ -69,15 +70,24 @@ export default function TraineeTab() {
 
   function carregar() {
     setCarregando(true);
-    Promise.all([getTrainees(), getTraineeSemanas(), getDemandas(), getEnvios()])
-      .then(([tr, sem, dem, env]) => {
+    Promise.all([getTrainees(), getTraineeSemanas(), getFormacoes()])
+      .then(([tr, sem, f]) => {
         setTrainees(tr || []);
         setSemanas(sem || []);
-        setDemandas(dem || []);
-        setEnvios(env || []);
+        setDemandas(f.demandas || []);
+        setEnvios(f.envios || []);
+        setErroDados(f.erro || null);
         setCarregando(false);
       })
-      .catch(() => setCarregando(false));
+      .catch((e) => { setErroDados(String(e.message || e)); setCarregando(false); });
+  }
+
+  function recarregarEnvios() {
+    getFormacoes().then((f) => {
+      setDemandas(f.demandas || []);
+      setEnvios(f.envios || []);
+      setErroDados(f.erro || null);
+    });
   }
 
   async function entrar() {
@@ -153,7 +163,7 @@ export default function TraineeTab() {
       if (Math.random() < 0.1) setOlho(true);
     }
     if (erro) toast('error', erro);
-    getEnvios().then((e) => setEnvios(e || []));
+    recarregarEnvios();
   }
 
   async function removerImagem(demandaId, path) {
@@ -162,7 +172,7 @@ export default function TraineeTab() {
     });
     if (!res.ok) { toast('error', res.erro); return; }
     toast('success', 'Imagem removida.');
-    getEnvios().then((e) => setEnvios(e || []));
+    recarregarEnvios();
   }
 
   // ════════ Login ════════
@@ -254,6 +264,11 @@ export default function TraineeTab() {
   return (
     <div className="space-y-3">
       {olho && <OlhoBigBrother onFechar={() => setOlho(false)} />}
+      {erroDados && (
+        <Alert tipo="error"
+          msg={'Não consegui ler as formações: ' + erroDados
+            + '. Se fala em coluna "paths", falta rodar o formacoes.sql no Supabase.'} />
+      )}
       {visual && (
         <Visualizador urls={visual.urls} indice={visual.indice}
           onFechar={() => setVisual(null)} />

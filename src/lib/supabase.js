@@ -567,28 +567,31 @@ async function apagarArquivos(paths) {
   try { await sb.storage.from(BUCKET).remove(lista); } catch (e) {}
 }
 
-export async function getDemandas() {
+// Demandas + envios numa chamada, PROPAGANDO o erro do Postgres. As leituras
+// antigas devolviam [] em qualquer falha, então "ninguém enviou" e "não
+// consegui ler a tabela" ficavam idênticos na tela — foi o que escondeu a
+// coluna 'paths' faltando depois da migração.
+export async function getFormacoes() {
   const temp = await temporadaAtiva();
-  if (!temp) return [];
-  const { data } = await sb.from('formacao_demandas')
+  if (!temp) return { demandas: [], envios: [], erro: 'Nenhuma temporada ativa.' };
+
+  const dem = await sb.from('formacao_demandas')
     .select('id,semana_id,titulo,descricao,prazo,ordem')
     .eq('temporada_id', temp.id)
     .order('prazo', { ascending: true })
     .order('ordem', { ascending: true });
-  return data || [];
-}
+  if (dem.error) return { demandas: [], envios: [], erro: dem.error.message };
 
-export async function getEnvios() {
-  const temp = await temporadaAtiva();
-  if (!temp) return [];
-  const { data: dem } = await sb.from('formacao_demandas')
-    .select('id').eq('temporada_id', temp.id);
-  const ids = (dem || []).map((d) => d.id);
-  if (!ids.length) return [];
-  const { data } = await sb.from('formacao_envios')
+  const demandas = dem.data || [];
+  const ids = demandas.map((d) => d.id);
+  if (!ids.length) return { demandas, envios: [] };
+
+  const env = await sb.from('formacao_envios')
     .select('id,demanda_id,pessoa_id,paths,enviado_em,atrasado,verificado_em,imagem_apagada')
     .in('demanda_id', ids);
-  return data || [];
+  if (env.error) return { demandas, envios: [], erro: env.error.message };
+
+  return { demandas, envios: env.data || [] };
 }
 
 export async function enviarFormacao({ senha, pessoaId, demandaId, blob, ext }) {
