@@ -11,6 +11,7 @@ import {
   removerTrainees, criarSemana, editarSemana, apagarSemana, toggleFormacao,
   marcarPresenca,
 } from '@/lib/supabase';
+import DataBR from '@/components/ui/DataBR';
 import { nomesDoDraw } from '@/lib/draw';
 import { norm } from '@/lib/data';
 import { calibrar, ranking } from '@/lib/speaks-stats';
@@ -56,42 +57,6 @@ function semanaDe(iso) {
   const ini = new Date(d); ini.setDate(d.getDate() - dow);
   const fim = new Date(ini); fim.setDate(ini.getDate() + 6);
   return { inicio: isoDe(ini), fim: isoDe(fim) };
-}
-
-function fmtBR(iso) {
-  if (!iso) return '';
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
-}
-
-// 'dd/mm/aaaa' → 'aaaa-mm-dd', ou null se inválida.
-function parseBR(str) {
-  const m = (str || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!m) return null;
-  const d = +m[1], mo = +m[2], y = +m[3];
-  const iso = `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  const dt = new Date(iso + 'T00:00:00');
-  if (dt.getMonth() + 1 !== mo || dt.getDate() !== d) return null;
-  return iso;
-}
-
-// Campo de data em formato brasileiro (dd/mm/aaaa). Confirma no blur.
-function DataBR({ value, onCommit }) {
-  const [txt, setTxt] = useState(fmtBR(value));
-  useEffect(() => { setTxt(fmtBR(value)); }, [value]);
-  return (
-    <input
-      type="text" inputMode="numeric" placeholder="dd/mm/aaaa" maxLength={10}
-      value={txt}
-      onChange={(e) => setTxt(e.target.value)}
-      onBlur={() => {
-        const iso = parseBR(txt);
-        if (iso) onCommit(iso); else setTxt(fmtBR(value));
-      }}
-      className="bg-surface border border-border rounded px-2 py-1 text-[12px]
-        text-text outline-none focus:border-bordo w-[92px] text-center"
-    />
-  );
 }
 
 export default function TraineesArea({ senha }) {

@@ -541,3 +541,123 @@ export async function toggleFormacao({ pessoaId, semanaId, feito }) {
     .delete().eq('pessoa_id', pessoaId).eq('semana_id', semanaId);
   return { ok: !error };
 }
+
+// ── Formações dos trainees ──────────────────────────────────
+// A imagem vai para o bucket 'formacoes' (público para leitura por URL, mas
+// sem policy de listagem: o nome é UUID, então só chega quem recebeu o
+// caminho vindo do banco). O REGISTRO do envio passa por RPC com senha, então
+// arquivo solto no bucket não vira envio — vira órfão e sai na limpeza.
+const BUCKET = 'formacoes';
+
+export async function verificarSenhaTrainee(senha) {
+  const { data, error } = await sb.rpc('verificar_senha_trainee', { p_senha: senha });
+  return !error && data === true;
+}
+
+export function urlDaImagem(path) {
+  if (!path) return '';
+  return sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+// A policy de delete só libera arquivo com mais de 7 dias — o que é recente
+// simplesmente não é apagado, e isso é proposital.
+async function apagarArquivos(paths) {
+  const lista = (paths || []).filter(Boolean);
+  if (!lista.length) return;
+  try { await sb.storage.from(BUCKET).remove(lista); } catch (e) {}
+}
+
+export async function getDemandas() {
+  const temp = await temporadaAtiva();
+  if (!temp) return [];
+  const { data } = await sb.from('formacao_demandas')
+    .select('id,semana_id,titulo,descricao,prazo,ordem')
+    .eq('temporada_id', temp.id)
+    .order('prazo', { ascending: true })
+    .order('ordem', { ascending: true });
+  return data || [];
+}
+
+export async function getEnvios() {
+  const temp = await temporadaAtiva();
+  if (!temp) return [];
+  const { data: dem } = await sb.from('formacao_demandas')
+    .select('id').eq('temporada_id', temp.id);
+  const ids = (dem || []).map((d) => d.id);
+  if (!ids.length) return [];
+  const { data } = await sb.from('formacao_envios')
+    .select('id,demanda_id,pessoa_id,path,enviado_em,atrasado,verificado_em,imagem_apagada')
+    .in('demanda_id', ids);
+  return data || [];
+}
+
+export async function enviarFormacao({ senha, pessoaId, demandaId, blob, ext }) {
+  const temp = await temporadaAtiva();
+  if (!temp) return { ok: false, erro: 'Nenhuma temporada ativa.' };
+  const id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : String(Date.now()) + Math.random().toString(16).slice(2);
+  const path = `${temp.id}/${demandaId}/${id}.${ext}`;
+
+  const up = await sb.storage.from(BUCKET)
+    .upload(path, blob, { contentType: blob.type, upsert: false });
+  if (up.error) return { ok: false, erro: 'Falha ao subir a imagem: ' + up.error.message };
+
+  const { error } = await sb.rpc('enviar_formacao', {
+    p_senha: senha, p_pessoa_id: pessoaId, p_demanda_id: demandaId, p_path: path,
+  });
+  if (error) return { ok: false, erro: error.message };
+  return { ok: true, path };
+}
+
+export async function criarDemanda({ senha, semanaId, titulo, descricao, prazo, ordem }) {
+  const { error } = await sb.rpc('criar_demanda', {
+    p_senha: senha, p_semana_id: semanaId, p_titulo: titulo,
+    p_descricao: descricao || null, p_prazo: prazo, p_ordem: ordem || 1,
+  });
+  if (error) return { ok: false, erro: error.message };
+  return { ok: true };
+}
+
+export async function editarDemanda({ senha, id, titulo, descricao, prazo }) {
+  const { error } = await sb.rpc('editar_demanda', {
+    p_senha: senha, p_id: id, p_titulo: titulo,
+    p_descricao: descricao || null, p_prazo: prazo || null,
+  });
+  if (error) return { ok: false, erro: error.message };
+  return { ok: true };
+}
+
+export async function apagarDemanda({ senha, id }) {
+  const { data, error } = await sb.rpc('apagar_demanda', { p_senha: senha, p_id: id });
+  if (error) return { ok: false, erro: error.message };
+  await apagarArquivos((data || []).map((r) => r.path));
+  return { ok: true };
+}
+
+export async function verificarFormacoes({ senha, ids, verificado }) {
+  const { error } = await sb.rpc('verificar_formacoes', {
+    p_senha: senha, p_ids: ids, p_verificado: verificado,
+  });
+  if (error) return { ok: false, erro: error.message };
+  return { ok: true, n: (ids || []).length };
+}
+
+export async function apagarEnvio({ senha, id }) {
+  const { data, error } = await sb.rpc('apagar_envio', { p_senha: senha, p_id: id });
+  if (error) return { ok: false, erro: error.message };
+  await apagarArquivos((data || []).map((r) => r.path));
+  return { ok: true };
+}
+
+// Apaga as imagens de demandas com prazo anterior a 'antes'. O registro de
+// quem entregou e foi verificado continua — some só o arquivo.
+export async function limparImagensFormacao({ senha, antes }) {
+  const { data, error } = await sb.rpc('limpar_imagens_formacao', {
+    p_senha: senha, p_antes: antes,
+  });
+  if (error) return { ok: false, erro: error.message };
+  const paths = (data || []).map((r) => r.path);
+  await apagarArquivos(paths);
+  return { ok: true, n: paths.length };
+}

@@ -7,11 +7,12 @@ algo aqui estiver incompleto ou se revelar incorreto.
 
 Web app de gestão de treinos de debate (formato British Parliamentary) da USP Debate.
 Funcionalidades: registro de presença, geração do "draw" (sorteio de salas e posições
-OG/OO/CG/CO), registro de speaker points com dashboard de desempenho calibrado, e
-acompanhamento de trainees. Interface em **português**.
+OG/OO/CG/CO), registro de speaker points com dashboard de desempenho calibrado,
+acompanhamento de trainees e envio de formações (imagem) pelos trainees.
+Interface em **português**.
 
-Repositório pequeno (~30 arquivos de código em `src/`). App de página única (6 abas),
-sem backend próprio — usa Supabase.
+Repositório pequeno (~35 arquivos de código em `src/`). App de página única (7 abas),
+sem backend próprio — usa Supabase (Postgres + Storage).
 
 ## Stack e runtime
 
@@ -42,18 +43,20 @@ Fatos validados:
 ## Arquitetura — onde mexer
 
 ### `src/app/`
-- `page.jsx` — shell do app: as 6 abas (`presenca`, `draw`, `speaks`, `desempenho`,
-  `historico`, `admin`), header e navegação. Renderiza condicionalmente os componentes de aba.
+- `page.jsx` — shell do app: as 7 abas (`presenca`, `draw`, `speaks`, `desempenho`,
+  `historico`, `trainee`, `admin`), header e navegação. Renderiza condicionalmente os
+  componentes de aba.
 - `layout.jsx` — fontes (`next/font/google`), metadata. `globals.css` — Tailwind + design
   tokens (CSS variables do tema escuro). Mudanças de cor/fonte do tema vão aqui + `tailwind.config.js`.
 
 ### `src/components/`
 - `*Tab.jsx` — um componente por aba. `AdminTab.jsx` é o maior: menu com sub-áreas
-  (draw, registros, análise de juízes, listas de presença, trainees).
+  (draw, registros, análise de juízes, listas de presença, trainees, formações).
 - Componentes de domínio: `DrawView`, `AdminDrawEditor`, `SpeaksDoDraw`, `SpeaksManual`,
-  `TraineesArea`, `IntroSplash`.
+  `TraineesArea`, `FormacoesArea`, `IntroSplash`.
 - `src/components/ui/` — primitivos reutilizáveis: `Card`, `Button`, `Alert`,
-  `Autocomplete`, `ConfirmModal`, `Toaster`, `Icons` (ícones SVG), `LineChart`, `Decor`.
+  `Autocomplete`, `ConfirmModal`, `DataBR`, `Toaster`, `Icons` (ícones SVG), `LineChart`,
+  `Decor`, `OlhoBigBrother`.
 
 ### `src/lib/` — toda a lógica fora da UI
 - **`supabase.js`** — **a camada de dados inteira.** Todo acesso ao banco passa por
@@ -64,6 +67,8 @@ Fatos validados:
 - `drawgen.js` — algoritmo de sorteio do draw (funções puras).
 - `draw.js` — helpers do draw: `POS_STYLE`, `ordenarPosicoes`, `panelSala`, `semPar`.
 - `speaks-stats.js` — modelo de calibragem de speaker points (debatedor + juiz, com shrinkage).
+- `imagem.js` — compressão de imagem no cliente antes do upload (o bucket tem teto de
+  1 MB por arquivo e a quota do plano gratuito é de 1 GB).
 - `toast.js` — sistema de toasts. `data.js` — `NOMES_PS` (lista do PS) e `norm()`.
 
 ### Convenções obrigatórias
@@ -76,7 +81,8 @@ Fatos validados:
 
 - Arquivos SQL em `supabase/`. São aplicados **manualmente** no SQL Editor do Supabase —
   **não há migração automática**. Ordem de execução:
-  `schema.sql` → `functions.sql` → `speaks.sql` → `extras.sql` → `sala-manual.sql` → `trainees.sql`.
+  `schema.sql` → `functions.sql` → `speaks.sql` → `extras.sql` → `sala-manual.sql` →
+  `trainees.sql` → `formacoes.sql`.
 - Quase tudo é `create or replace` / `create ... if not exists` (reexecutável). Exceção:
   o bloco SEED de pessoas no fim do `schema.sql` **duplica** se rodar 2×.
 - Ações de admin = funções RPC **protegidas por senha** (em `functions.sql`/`extras.sql`,

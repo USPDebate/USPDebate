@@ -7,7 +7,8 @@ import Autocomplete from '@/components/ui/Autocomplete';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import AdminDrawEditor from '@/components/AdminDrawEditor';
 import TraineesArea from '@/components/TraineesArea';
-import { IconLock, IconUsers, IconScale, IconLayers, IconPlus, IconTrash, IconCheck } from '@/components/ui/Icons';
+import FormacoesArea from '@/components/FormacoesArea';
+import { IconLock, IconUsers, IconScale, IconLayers, IconPlus, IconTrash, IconCheck, IconImage } from '@/components/ui/Icons';
 import {
   verificarSenha, listarPresentesHoje, listarPessoas, getDrawHoje,
   gerarDraw as apiGerarDraw, salvarDraw, apagarPresenca, mesclarPessoas, apagarPessoa,
@@ -513,6 +514,17 @@ export default function AdminTab() {
               Importar trainees, semanas, presença, formações e desempenho.
             </div>
           </button>
+          <button
+            onClick={() => setArea('formacoes')}
+            className="text-left p-5 rounded-xl2 border border-border bg-surface-2
+              transition hover:border-bordo/60 hover:-translate-y-0.5"
+          >
+            <IconImage className="w-6 h-6 text-bordo mb-2" />
+            <div className="text-[13px] font-semibold">Formações</div>
+            <div className="text-[11px] text-muted mt-1">
+              Publicar a demanda da semana e verificar as imagens enviadas pelos trainees.
+            </div>
+          </button>
         </div>
       </Card>
     );
@@ -761,6 +773,16 @@ export default function AdminTab() {
       <div className="space-y-3">
         <Voltar />
         <TraineesArea senha={senha} />
+      </div>
+    );
+  }
+
+  // ════════ Área: Formações ════════
+  if (area === 'formacoes') {
+    return (
+      <div className="space-y-3">
+        <Voltar />
+        <FormacoesArea senha={senha} />
       </div>
     );
   }

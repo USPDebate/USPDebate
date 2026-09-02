@@ -5,12 +5,13 @@ import DrawTab from '@/components/DrawTab';
 import SpeaksTab from '@/components/SpeaksTab';
 import DesempenhoTab from '@/components/DesempenhoTab';
 import HistoricoTab from '@/components/HistoricoTab';
+import TraineeTab from '@/components/TraineeTab';
 import AdminTab from '@/components/AdminTab';
 import Decor from '@/components/ui/Decor';
 import IntroSplash from '@/components/IntroSplash';
 import Toaster from '@/components/ui/Toaster';
 import {
-  IconCalendar, IconUsers, IconLayers, IconScale, IconChart, IconClock, IconLock,
+  IconCalendar, IconUsers, IconLayers, IconScale, IconChart, IconClock, IconLock, IconUpload,
 } from '@/components/ui/Icons';
 
 const ABAS = [
@@ -19,6 +20,7 @@ const ABAS = [
   { id: 'speaks',     label: 'Speaks',     icon: IconScale },
   { id: 'desempenho', label: 'Desempenho', icon: IconChart },
   { id: 'historico',  label: 'Histórico',  icon: IconClock },
+  { id: 'trainee',    label: 'Trainee',    icon: IconUpload },
   { id: 'admin',      label: 'Admin',      icon: IconLock },
 ];
 
@@ -78,6 +80,7 @@ export default function Page() {
         {aba === 'speaks'     && <SpeaksTab />}
         {aba === 'desempenho' && <DesempenhoTab />}
         {aba === 'historico'  && <HistoricoTab />}
+        {aba === 'trainee'    && <TraineeTab />}
         {aba === 'admin'      && <AdminTab />}
       </main>
 
@@ -90,11 +93,12 @@ export default function Page() {
             <button
               key={a.id}
               onClick={() => setAba(a.id)}
-              className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition
+              className={`flex-1 min-w-0 flex flex-col items-center gap-0.5 py-2 transition
                 ${ativo ? 'text-bordo' : 'text-muted'}`}
             >
-              <Ic className="w-5 h-5" />
-              <span className="text-[8px] font-semibold uppercase tracking-wide">{a.label}</span>
+              <Ic className="w-5 h-5 shrink-0" />
+              <span className="w-full px-0.5 text-[8px] font-semibold uppercase tracking-tight
+                text-center truncate">{a.label}</span>
             </button>
           );
         })}
