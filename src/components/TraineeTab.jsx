@@ -16,6 +16,8 @@ import { toast } from '@/lib/toast';
 
 const SESSAO = 'uspd_trainee';
 const MAX_IMAGENS = 4;
+// TEMPORÁRIO: 1 = sempre, para testar o easter egg. Valor normal: 0.1
+const CHANCE_OLHO = 1;
 const DIAS = 30 * 24 * 60 * 60 * 1000;
 
 function fmtBR(iso) {
@@ -160,7 +162,7 @@ export default function TraineeTab() {
 
     if (enviadas > 0) {
       toast('success', enviadas === 1 ? 'Formação enviada!' : `${enviadas} imagens enviadas!`);
-      if (Math.random() < 0.1) setOlho(true);
+      if (Math.random() < CHANCE_OLHO) setOlho(true);
     }
     if (erro) toast('error', erro);
     recarregarEnvios();
