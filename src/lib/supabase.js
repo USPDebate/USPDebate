@@ -130,19 +130,19 @@ export async function registrarPresenca({ nome, dupla, tipo }) {
   }
 }
 
-export async function atualizarDupla({ pessoaId, dupla }) {
+export async function atualizarPresenca({ pessoaId, dupla, tipo }) {
   try {
     const temp = await temporadaAtiva();
     let duplaId = null;
-    if (dupla && dupla.trim().length >= 2) {
+    if (tipo === 'ps' && dupla && dupla.trim().length >= 2) {
       const d = await acharOuCriarPessoa(dupla);
       duplaId = d ? d.id : null;
     }
     const { error } = await sb.from('presencas')
-      .update({ dupla_pessoa_id: duplaId })
+      .update({ dupla_pessoa_id: duplaId, tipo })
       .eq('temporada_id', temp.id).eq('pessoa_id', pessoaId).eq('data', hojeISO());
     if (error) return { ok: false, erro: error.message };
-    return { ok: true, mensagem: duplaId ? 'Dupla atualizada.' : 'Dupla removida.' };
+    return { ok: true, mensagem: 'Presença atualizada.' };
   } catch (e) {
     return { ok: false, erro: String(e.message || e) };
   }
