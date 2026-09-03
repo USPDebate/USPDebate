@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef } from 'react';
 import Card, { SectionLabel } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import IconButton from '@/components/ui/IconButton';
+import LinkButton from '@/components/ui/LinkButton';
 import Alert from '@/components/ui/Alert';
 import Autocomplete from '@/components/ui/Autocomplete';
 import OlhoBigBrother from '@/components/ui/OlhoBigBrother';
@@ -214,7 +216,7 @@ export default function TraineeTab() {
     return (
       <Card style={{ animationDelay: '.05s' }}>
         <SectionLabel icon={IconUser} right={
-          <button onClick={sair} className="text-[11px] text-muted hover:text-bordo">sair</button>
+          <LinkButton variant="plain" onClick={sair}>sair</LinkButton>
         }>
           Quem é você?
         </SectionLabel>
@@ -278,7 +280,7 @@ export default function TraineeTab() {
 
       <Card style={{ animationDelay: '.05s' }}>
         <SectionLabel icon={IconUser} right={
-          <button onClick={sair} className="text-[11px] text-muted hover:text-bordo">sair</button>
+          <LinkButton variant="plain" onClick={sair}>sair</LinkButton>
         }>
           Área do trainee
         </SectionLabel>
@@ -287,11 +289,9 @@ export default function TraineeTab() {
             <div className="text-[15px] font-semibold">{eu.nome}</div>
             {eu.mentor && <div className="text-[11px] text-muted">Mentor: {eu.mentor}</div>}
           </div>
-          <button onClick={() => { setNome(''); setNomeOk(false); salvarSessao(senha, ''); }}
-            className="text-[11px] text-muted border border-border rounded-lg px-3 py-1.5
-              hover:border-bordo hover:text-bordo transition">
+          <LinkButton onClick={() => { setNome(''); setNomeOk(false); salvarSessao(senha, ''); }}>
             Não sou eu
-          </button>
+          </LinkButton>
         </div>
       </Card>
 
@@ -367,13 +367,13 @@ function Cartao({ d, e, hoje, sem, numero, daSemanaAtual, ocupado,
                   className="w-full h-full object-cover" />
               </button>
               {!verificada && (
-                <button
+                <IconButton
                   onClick={() => onRemover(d.id, pth)}
                   title="Remover esta imagem"
-                  className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full grid place-items-center
-                    bg-surface border border-[#e0625a80] text-danger">
+                  variant="danger"
+                  className="absolute -top-1.5 -right-1.5">
                   <IconTrash className="w-3 h-3" />
-                </button>
+                </IconButton>
               )}
             </div>
           ))}
