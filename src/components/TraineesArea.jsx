@@ -4,12 +4,13 @@ import Card, { SectionLabel } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Alert from '@/components/ui/Alert';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import WhatsappLink from '@/components/ui/WhatsappLink';
 import { IconUsers, IconClock, IconChart, IconTrash, IconPlus } from '@/components/ui/Icons';
 import {
   getTrainees, getTraineeSemanas, getTraineeFormacoes, getPresencasRaw, getSpeaks,
   getDatasPresenca, getDrawsDaTemporada, importarTrainees, resetarTrainees,
   removerTrainees, criarSemana, editarSemana, apagarSemana, toggleFormacao,
-  marcarPresenca,
+  marcarPresenca, getWhatsappTrainees,
 } from '@/lib/supabase';
 import DataBR from '@/components/ui/DataBR';
 import { nomesDoDraw } from '@/lib/draw';
@@ -67,6 +68,7 @@ export default function TraineesArea({ senha }) {
   const [datasPresenca, setDatasPresenca] = useState([]);
   const [draws, setDraws] = useState([]);
   const [statsMap, setStatsMap] = useState(new Map());
+  const [zaps, setZaps] = useState(null);   // Map pessoaId -> WhatsApp (null = não deu para ler)
   const [carregando, setCarregando] = useState(true);
 
   const [csv, setCsv] = useState('');
@@ -81,8 +83,10 @@ export default function TraineesArea({ senha }) {
     Promise.all([
       getTrainees(), getTraineeSemanas(), getTraineeFormacoes(),
       getPresencasRaw(), getSpeaks(), getDatasPresenca(), getDrawsDaTemporada(),
-    ]).then(([tr, sem, form, pres, speaks, datas, drw]) => {
+      getWhatsappTrainees(senha),
+    ]).then(([tr, sem, form, pres, speaks, datas, drw, zp]) => {
       setTrainees(tr || []);
+      setZaps(zp);
       setSemanas(sem || []);
       setFormacoes(new Set((form || []).map((f) => f.pessoa_id + '-' + f.semana_id)));
       setPresencas(pres || []);
@@ -503,7 +507,15 @@ export default function TraineesArea({ senha }) {
                                     />
                                     <span className="truncate">{t.nome}</span>
                                   </label>
-                                ) : t.nome}
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    <span className="truncate min-w-0">{t.nome}</span>
+                                    {zaps && (
+                                      <WhatsappLink numero={zaps.get(t.pessoaId)} nome={t.nome}
+                                        texto={`Oi, ${t.nome.split(' ')[0]}! Aqui é da diretoria da USP Debate.`} />
+                                    )}
+                                  </div>
+                                )}
                               </td>
                               {semanas.map((s) => {
                                 const pres = presencaNa(t.pessoaId, s);

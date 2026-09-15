@@ -82,7 +82,7 @@ Fatos validados:
 - Arquivos SQL em `supabase/`. São aplicados **manualmente** no SQL Editor do Supabase —
   **não há migração automática**. Ordem de execução:
   `schema.sql` → `functions.sql` → `speaks.sql` → `extras.sql` → `sala-manual.sql` →
-  `trainees.sql` → `formacoes.sql`.
+  `trainees.sql` → `formacoes.sql` → `whatsapp.sql`.
 - Quase tudo é `create or replace` / `create ... if not exists` (reexecutável). Exceção:
   o bloco SEED de pessoas no fim do `schema.sql` **duplica** se rodar 2×.
 - Ações de admin = funções RPC **protegidas por senha** (em `functions.sql`/`extras.sql`,

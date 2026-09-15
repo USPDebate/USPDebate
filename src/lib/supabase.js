@@ -554,6 +554,32 @@ export async function verificarSenhaTrainee(senha) {
   return !error && data === true;
 }
 
+// ── WhatsApp dos trainees ──
+// Telefone não tem leitura pública: o trainee grava com a senha de trainee e
+// só o admin lê (supabase/whatsapp.sql).
+export async function traineeTemWhatsapp({ senha, pessoaId }) {
+  const { data, error } = await sb.rpc('trainee_tem_whatsapp', {
+    p_senha: senha, p_pessoa_id: pessoaId,
+  });
+  if (error) return { ok: false, erro: error.message };
+  return { ok: true, tem: data === true };
+}
+
+export async function salvarWhatsappTrainee({ senha, pessoaId, whatsapp }) {
+  const { error } = await sb.rpc('salvar_whatsapp_trainee', {
+    p_senha: senha, p_pessoa_id: pessoaId, p_whatsapp: whatsapp,
+  });
+  if (error) return { ok: false, erro: error.message };
+  return { ok: true };
+}
+
+// Map pessoaId -> número, ou null se não deu para ler (ex.: SQL não rodado).
+export async function getWhatsappTrainees(senha) {
+  const { data, error } = await sb.rpc('listar_whatsapp_trainees', { p_senha: senha });
+  if (error) return null;
+  return new Map((data || []).map((r) => [r.pessoa_id, r.whatsapp]));
+}
+
 export function urlDaImagem(path) {
   if (!path) return '';
   return sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;

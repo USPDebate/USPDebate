@@ -8,12 +8,16 @@ import Alert from '@/components/ui/Alert';
 import Autocomplete from '@/components/ui/Autocomplete';
 import OlhoBigBrother from '@/components/ui/OlhoBigBrother';
 import Visualizador from '@/components/ui/Visualizador';
-import { IconLock, IconUser, IconUpload, IconCheck, IconClock, IconTrash } from '@/components/ui/Icons';
+import {
+  IconLock, IconUser, IconUpload, IconCheck, IconClock, IconTrash, IconWhatsapp,
+} from '@/components/ui/Icons';
 import {
   verificarSenhaTrainee, getTrainees, getTraineeSemanas, getFormacoes,
   enviarFormacao, removerImagemFormacao, urlDaImagem,
+  traineeTemWhatsapp, salvarWhatsappTrainee,
 } from '@/lib/supabase';
 import { comprimirImagem } from '@/lib/imagem';
+import { mascararWhatsapp, normalizarWhatsapp } from '@/lib/whatsapp';
 import { toast } from '@/lib/toast';
 
 const SESSAO = 'uspd_trainee';
@@ -55,6 +59,8 @@ export default function TraineeTab() {
   const [enviando, setEnviando] = useState(null);   // id da demanda em envio
   const [olho, setOlho] = useState(false);
   const [visual, setVisual] = useState(null);   // { urls, indice }
+  const [zap, setZap] = useState(null);   // null = conferindo · true/false = tem WhatsApp
+  const [trocandoZap, setTrocandoZap] = useState(false);
   const inputs = useRef({});
 
   useEffect(() => {
@@ -113,7 +119,11 @@ export default function TraineeTab() {
 
   function sair() {
     try { localStorage.removeItem(SESSAO); } catch (e) {}
-    setLogado(false); setSenha(''); setNome(''); setNomeOk(false);
+    setLogado(false); setSenha(''); setNome(''); setNomeOk(false); setTrocandoZap(false);
+  }
+
+  function naoSouEu() {
+    setNome(''); setNomeOk(false); setTrocandoZap(false); salvarSessao(senha, '');
   }
 
   function escolherNome(v, daLista) {
@@ -123,6 +133,20 @@ export default function TraineeTab() {
   }
 
   const eu = trainees.find((t) => t.nome === nome) || null;
+  const euId = eu ? eu.pessoaId : null;
+
+  // Primeiro acesso = a pessoa ainda não tem WhatsApp no banco (vale para
+  // qualquer aparelho, não só este).
+  useEffect(() => {
+    if (!logado || !euId) { setZap(null); return undefined; }
+    let vivo = true;
+    setZap(null);
+    traineeTemWhatsapp({ senha, pessoaId: euId }).then((r) => {
+      // Se a checagem falhar (ex.: whatsapp.sql ainda não rodado), não trava o trainee.
+      if (vivo) setZap(r.ok ? r.tem : true);
+    });
+    return () => { vivo = false; };
+  }, [logado, euId, senha]);
   const semanaDe = (id) => semanas.find((s) => s.id === id) || null;
   const numeroSemana = (id) => {
     const i = semanas.findIndex((s) => s.id === id);
@@ -244,6 +268,28 @@ export default function TraineeTab() {
     );
   }
 
+  // ════════ WhatsApp (primeiro acesso ou troca) ════════
+  if (zap === null) {
+    return (
+      <Card style={{ animationDelay: '.05s' }}>
+        <SectionLabel icon={IconUser}>Área do trainee</SectionLabel>
+        <div className="skeleton h-20 rounded-xl2" />
+      </Card>
+    );
+  }
+  if (!zap || trocandoZap) {
+    return (
+      <CadastroWhatsapp
+        senha={senha}
+        eu={eu}
+        primeiroAcesso={!zap}
+        onSalvo={() => { setZap(true); setTrocandoZap(false); }}
+        onCancelar={() => setTrocandoZap(false)}
+        onNaoSouEu={naoSouEu}
+      />
+    );
+  }
+
   // ════════ Formações ════════
   const propsCartao = (d, e) => {
     const sem = semanaDe(d.semana_id);
@@ -289,9 +335,12 @@ export default function TraineeTab() {
             <div className="text-[15px] font-semibold">{eu.nome}</div>
             {eu.mentor && <div className="text-[11px] text-muted">Mentor: {eu.mentor}</div>}
           </div>
-          <LinkButton onClick={() => { setNome(''); setNomeOk(false); salvarSessao(senha, ''); }}>
-            Não sou eu
-          </LinkButton>
+          <div className="flex items-center gap-2 flex-wrap">
+            <LinkButton onClick={() => setTrocandoZap(true)}>
+              <IconWhatsapp className="w-3.5 h-3.5" />Trocar WhatsApp
+            </LinkButton>
+            <LinkButton onClick={naoSouEu}>Não sou eu</LinkButton>
+          </div>
         </div>
       </Card>
 
@@ -321,6 +370,59 @@ export default function TraineeTab() {
         </Card>
       )}
     </div>
+  );
+}
+
+function CadastroWhatsapp({ senha, eu, primeiroAcesso, onSalvo, onCancelar, onNaoSouEu }) {
+  const [valor, setValor] = useState('');
+  const [erro, setErro] = useState(null);
+  const [salvando, setSalvando] = useState(false);
+
+  async function salvar() {
+    const numero = normalizarWhatsapp(valor);
+    if (!numero) {
+      setErro('Número inválido. Use DDD + celular, ex.: (11) 91234-5678.');
+      return;
+    }
+    setSalvando(true);
+    const res = await salvarWhatsappTrainee({ senha, pessoaId: eu.pessoaId, whatsapp: numero });
+    setSalvando(false);
+    if (!res.ok) { setErro(res.erro); return; }
+    toast('success', 'WhatsApp salvo.');
+    onSalvo();
+  }
+
+  return (
+    <Card style={{ animationDelay: '.05s' }}>
+      <SectionLabel icon={IconWhatsapp} right={primeiroAcesso
+        ? <LinkButton variant="plain" onClick={onNaoSouEu}>não sou eu</LinkButton>
+        : <LinkButton variant="plain" onClick={onCancelar}>cancelar</LinkButton>
+      }>
+        {primeiroAcesso ? 'Primeiro acesso' : 'Trocar WhatsApp'}
+      </SectionLabel>
+      <p className="text-xs text-muted mb-3">
+        {primeiroAcesso
+          ? <>Olá, <span className="text-text">{eu.nome}</span>! Antes de continuar, informe o
+            seu número de WhatsApp.</>
+          : <>Informe o novo número de WhatsApp de <span className="text-text">{eu.nome}</span>.</>}
+        {' '}A diretoria usa só para avisar sobre as formações — ele não aparece para os
+        outros trainees.
+      </p>
+      {erro && <Alert tipo="error" msg={erro} />}
+      <input
+        type="tel"
+        inputMode="numeric"
+        autoComplete="tel-national"
+        value={valor}
+        onChange={(ev) => { setValor(mascararWhatsapp(ev.target.value)); setErro(null); }}
+        onKeyDown={(ev) => ev.key === 'Enter' && salvar()}
+        placeholder="(11) 91234-5678"
+        className="w-full px-3.5 py-3 rounded-lg text-base outline-none focus:border-bordo mb-3"
+      />
+      <Button onClick={salvar} loading={salvando}>
+        {primeiroAcesso ? 'Salvar e continuar' : 'Salvar'}
+      </Button>
+    </Card>
   );
 }
 

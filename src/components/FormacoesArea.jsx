@@ -6,10 +6,12 @@ import Alert from '@/components/ui/Alert';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import DataBR from '@/components/ui/DataBR';
 import Visualizador from '@/components/ui/Visualizador';
+import WhatsappLink from '@/components/ui/WhatsappLink';
 import { IconPlus, IconCheck, IconImage, IconTrash, IconClock } from '@/components/ui/Icons';
 import {
   getTraineeSemanas, getTrainees, getFormacoes, criarDemanda, editarDemanda,
   apagarDemanda, verificarFormacoes, apagarEnvio, limparImagensFormacao, urlDaImagem,
+  getWhatsappTrainees,
 } from '@/lib/supabase';
 import { toast } from '@/lib/toast';
 
@@ -34,6 +36,7 @@ export default function FormacoesArea({ senha }) {
   const [trainees, setTrainees] = useState([]);
   const [demandas, setDemandas] = useState([]);
   const [envios, setEnvios] = useState([]);
+  const [zaps, setZaps] = useState(null);   // Map pessoaId -> WhatsApp (null = não deu para ler)
   const [carregando, setCarregando] = useState(true);
 
   const [nova, setNova] = useState({ semanaId: '', titulo: '', descricao: '', prazo: '' });
@@ -47,10 +50,11 @@ export default function FormacoesArea({ senha }) {
 
   function recarregar() {
     setCarregando(true);
-    Promise.all([getTraineeSemanas(), getTrainees(), getFormacoes()])
-      .then(([sem, tr, f]) => {
+    Promise.all([getTraineeSemanas(), getTrainees(), getFormacoes(), getWhatsappTrainees(senha)])
+      .then(([sem, tr, f, zp]) => {
         setSemanas(sem || []);
         setTrainees(tr || []);
+        setZaps(zp);
         setDemandas(f.demandas || []);
         setEnvios(f.envios || []);
         setAlerta(f.erro
@@ -171,6 +175,15 @@ export default function FormacoesArea({ senha }) {
   const entregues = linhas.filter((l) => l.e);
   const verificadas = entregues.filter((l) => l.e.verificado_em);
   const atrasadas = entregues.filter((l) => l.e.atrasado);
+
+  // Mensagem já pronta no WhatsApp: quem não entregou recebe a cobrança.
+  const mensagemPara = (t, e) => {
+    const primeiro = t.nome.split(' ')[0];
+    if (e) return `Oi, ${primeiro}! Aqui é da diretoria da USP Debate.`;
+    return `Oi, ${primeiro}! Aqui é da diretoria da USP Debate. Ainda não recebemos a sua `
+      + `formação "${demanda.titulo}" (prazo ${fmtBR(demanda.prazo)}). `
+      + 'Consegue enviar pela área do trainee do site?';
+  };
 
   const urlsDe = (e) =>
     (e && !e.imagem_apagada && Array.isArray(e.paths) ? e.paths : []).map(urlDaImagem);
@@ -406,18 +419,24 @@ export default function FormacoesArea({ senha }) {
                     )}
                   </div>
                   <div className="p-2.5">
-                    <label className={`flex items-start gap-2 ${e ? 'cursor-pointer' : ''}`}>
-                      {e && (
-                        <input
-                          type="checkbox" checked={marcada}
-                          onChange={() => toggleSel(e.id)}
-                          className="w-4 h-4 mt-0.5 shrink-0 accent-[#c14059]"
-                        />
+                    <div className="flex items-start justify-between gap-1">
+                      <label className={`flex items-start gap-2 min-w-0 ${e ? 'cursor-pointer' : ''}`}>
+                        {e && (
+                          <input
+                            type="checkbox" checked={marcada}
+                            onChange={() => toggleSel(e.id)}
+                            className="w-4 h-4 mt-0.5 shrink-0 accent-[#c14059]"
+                          />
+                        )}
+                        <span className="text-[12px] font-semibold leading-tight break-words">
+                          {t.nome}
+                        </span>
+                      </label>
+                      {zaps && (
+                        <WhatsappLink numero={zaps.get(t.pessoaId)} nome={t.nome}
+                          texto={mensagemPara(t, e)} className="-mt-1.5 -mr-1.5" />
                       )}
-                      <span className="text-[12px] font-semibold leading-tight break-words">
-                        {t.nome}
-                      </span>
-                    </label>
+                    </div>
                     <div className="flex items-center justify-between gap-1 mt-1.5">
                       <Etiqueta envio={e} prazo={demanda.prazo} />
                       {e && (
