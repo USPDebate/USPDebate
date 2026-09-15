@@ -573,11 +573,12 @@ export async function salvarWhatsappTrainee({ senha, pessoaId, whatsapp }) {
   return { ok: true };
 }
 
-// Map pessoaId -> número, ou null se não deu para ler (ex.: SQL não rodado).
+// { mapa: Map pessoaId -> número, erro } — o erro vai para a tela, para
+// "ninguém cadastrou" não ficar igual a "não consegui ler".
 export async function getWhatsappTrainees(senha) {
   const { data, error } = await sb.rpc('listar_whatsapp_trainees', { p_senha: senha });
-  if (error) return null;
-  return new Map((data || []).map((r) => [r.pessoa_id, r.whatsapp]));
+  if (error) return { mapa: new Map(), erro: error.message };
+  return { mapa: new Map((data || []).map((r) => [r.pessoa_id, r.whatsapp])), erro: null };
 }
 
 export function urlDaImagem(path) {

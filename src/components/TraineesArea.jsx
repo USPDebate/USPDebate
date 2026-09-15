@@ -68,7 +68,8 @@ export default function TraineesArea({ senha }) {
   const [datasPresenca, setDatasPresenca] = useState([]);
   const [draws, setDraws] = useState([]);
   const [statsMap, setStatsMap] = useState(new Map());
-  const [zaps, setZaps] = useState(null);   // Map pessoaId -> WhatsApp (null = não deu para ler)
+  const [zaps, setZaps] = useState(new Map());   // pessoaId -> WhatsApp
+  const [erroZap, setErroZap] = useState(null);
   const [carregando, setCarregando] = useState(true);
 
   const [csv, setCsv] = useState('');
@@ -86,7 +87,8 @@ export default function TraineesArea({ senha }) {
       getWhatsappTrainees(senha),
     ]).then(([tr, sem, form, pres, speaks, datas, drw, zp]) => {
       setTrainees(tr || []);
-      setZaps(zp);
+      setZaps(zp.mapa);
+      setErroZap(zp.erro);
       setSemanas(sem || []);
       setFormacoes(new Set((form || []).map((f) => f.pessoa_id + '-' + f.semana_id)));
       setPresencas(pres || []);
@@ -301,6 +303,11 @@ export default function TraineesArea({ senha }) {
   return (
     <div className="space-y-3">
       {alerta && <Alert tipo={alerta.tipo} msg={alerta.msg} />}
+      {erroZap && (
+        <Alert tipo="error"
+          msg={'Não consegui ler os WhatsApps dos trainees: ' + erroZap
+            + '. Se fala em função não encontrada, falta rodar o whatsapp.sql no Supabase.'} />
+      )}
 
       {/* Importar trainees */}
       <Card style={{ animationDelay: '.05s' }}>
@@ -510,10 +517,8 @@ export default function TraineesArea({ senha }) {
                                 ) : (
                                   <div className="flex items-center gap-1">
                                     <span className="truncate min-w-0">{t.nome}</span>
-                                    {zaps && (
-                                      <WhatsappLink numero={zaps.get(t.pessoaId)} nome={t.nome}
-                                        texto={`Oi, ${t.nome.split(' ')[0]}! Aqui é da diretoria da USP Debate.`} />
-                                    )}
+                                    <WhatsappLink numero={zaps.get(t.pessoaId)} nome={t.nome}
+                                      texto={`Oi, ${t.nome.split(' ')[0]}! Aqui é da diretoria da USP Debate.`} />
                                   </div>
                                 )}
                               </td>

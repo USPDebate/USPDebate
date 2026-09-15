@@ -36,7 +36,8 @@ export default function FormacoesArea({ senha }) {
   const [trainees, setTrainees] = useState([]);
   const [demandas, setDemandas] = useState([]);
   const [envios, setEnvios] = useState([]);
-  const [zaps, setZaps] = useState(null);   // Map pessoaId -> WhatsApp (null = não deu para ler)
+  const [zaps, setZaps] = useState(new Map());   // pessoaId -> WhatsApp
+  const [erroZap, setErroZap] = useState(null);
   const [carregando, setCarregando] = useState(true);
 
   const [nova, setNova] = useState({ semanaId: '', titulo: '', descricao: '', prazo: '' });
@@ -54,7 +55,8 @@ export default function FormacoesArea({ senha }) {
       .then(([sem, tr, f, zp]) => {
         setSemanas(sem || []);
         setTrainees(tr || []);
-        setZaps(zp);
+        setZaps(zp.mapa);
+        setErroZap(zp.erro);
         setDemandas(f.demandas || []);
         setEnvios(f.envios || []);
         setAlerta(f.erro
@@ -199,6 +201,11 @@ export default function FormacoesArea({ senha }) {
   return (
     <div className="space-y-3">
       {alerta && <Alert tipo={alerta.tipo} msg={alerta.msg} />}
+      {erroZap && (
+        <Alert tipo="error"
+          msg={'Não consegui ler os WhatsApps dos trainees: ' + erroZap
+            + '. Se fala em função não encontrada, falta rodar o whatsapp.sql no Supabase.'} />
+      )}
 
       {/* Publicar formação */}
       <Card style={{ animationDelay: '.05s' }}>
@@ -432,10 +439,8 @@ export default function FormacoesArea({ senha }) {
                           {t.nome}
                         </span>
                       </label>
-                      {zaps && (
-                        <WhatsappLink numero={zaps.get(t.pessoaId)} nome={t.nome}
-                          texto={mensagemPara(t, e)} className="-mt-1.5 -mr-1.5" />
-                      )}
+                      <WhatsappLink numero={zaps.get(t.pessoaId)} nome={t.nome}
+                        texto={mensagemPara(t, e)} className="-mt-1.5 -mr-1.5" />
                     </div>
                     <div className="flex items-center justify-between gap-1 mt-1.5">
                       <Etiqueta envio={e} prazo={demanda.prazo} />

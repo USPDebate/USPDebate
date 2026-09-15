@@ -9,7 +9,7 @@ export default function WhatsappLink({ numero, texto, nome, className = '' }) {
   if (!numero) {
     return (
       <span title={`${nome || 'Trainee'} ainda não cadastrou o WhatsApp`}
-        className={`${caixa} text-muted/30`}>
+        className={`${caixa} text-muted/60`}>
         <IconWhatsapp className="w-4 h-4" />
       </span>
     );
