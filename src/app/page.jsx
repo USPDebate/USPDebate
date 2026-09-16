@@ -7,6 +7,7 @@ import DesempenhoTab from '@/components/DesempenhoTab';
 import HistoricoTab from '@/components/HistoricoTab';
 import TraineeTab from '@/components/TraineeTab';
 import AdminTab from '@/components/AdminTab';
+import CadastroMembroTab from '@/components/CadastroMembroTab';
 import Decor from '@/components/ui/Decor';
 import IntroSplash from '@/components/IntroSplash';
 import Toaster from '@/components/ui/Toaster';
@@ -32,7 +33,33 @@ export default function Page() {
     setDataHoje(new Date().toLocaleDateString('pt-BR', {
       weekday: 'long', day: '2-digit', month: 'long',
     }));
+    // Link de auto-cadastro (?aba=cadastro) — não fica no menu, só abre por link direto.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('aba') === 'cadastro') setAba('cadastro');
+    } catch (e) {}
   }, []);
+
+  if (aba === 'cadastro') {
+    return (
+      <div className="relative min-h-screen pb-24">
+        <Toaster />
+        <Decor />
+        <header className="relative z-10 bg-gradient-to-br from-[#120c0e]/90 to-bordo-soft/40
+          px-5 py-6 border-b border-border animate-drop">
+          <h1 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight leading-none">
+            USP Debate
+          </h1>
+          <p className="text-[10px] uppercase tracking-[0.22em] text-gold/80 mt-2">
+            Sistema de Treinos BP
+          </p>
+        </header>
+        <main className="relative z-10 max-w-7xl mx-auto px-4 py-4 sm:px-8 sm:py-6">
+          <CadastroMembroTab />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen pb-24">

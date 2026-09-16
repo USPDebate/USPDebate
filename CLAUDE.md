@@ -8,11 +8,13 @@ algo aqui estiver incompleto ou se revelar incorreto.
 Web app de gestão de treinos de debate (formato British Parliamentary) da USP Debate.
 Funcionalidades: registro de presença, geração do "draw" (sorteio de salas e posições
 OG/OO/CG/CO), registro de speaker points com dashboard de desempenho calibrado,
-acompanhamento de trainees e envio de formações (imagem) pelos trainees.
+acompanhamento de trainees, envio de formações (imagem) pelos trainees, e auto-cadastro
+de membros/gestão com acompanhamento de presença pela área de alta gestão.
 Interface em **português**.
 
-Repositório pequeno (~35 arquivos de código em `src/`). App de página única (7 abas),
-sem backend próprio — usa Supabase (Postgres + Storage).
+Repositório pequeno (~35 arquivos de código em `src/`). App de página única (7 abas
+visíveis + 1 aba oculta de auto-cadastro acessada por link), sem backend próprio —
+usa Supabase (Postgres + Storage).
 
 ## Stack e runtime
 
@@ -45,15 +47,19 @@ Fatos validados:
 ### `src/app/`
 - `page.jsx` — shell do app: as 7 abas (`presenca`, `draw`, `speaks`, `desempenho`,
   `historico`, `trainee`, `admin`), header e navegação. Renderiza condicionalmente os
-  componentes de aba.
+  componentes de aba. Também trata a aba oculta `cadastro` (auto-cadastro de
+  membro/gestão), aberta só via `?aba=cadastro` na URL — não aparece no menu.
 - `layout.jsx` — fontes (`next/font/google`), metadata. `globals.css` — Tailwind + design
   tokens (CSS variables do tema escuro). Mudanças de cor/fonte do tema vão aqui + `tailwind.config.js`.
 
 ### `src/components/`
 - `*Tab.jsx` — um componente por aba. `AdminTab.jsx` é o maior: menu com sub-áreas
-  (draw, registros, análise de juízes, listas de presença, trainees, formações).
+  (draw, registros, análise de juízes, listas de presença, trainees, formações, alta gestão).
+  `CadastroMembroTab.jsx` é a aba oculta de auto-cadastro (sem senha).
 - Componentes de domínio: `DrawView`, `AdminDrawEditor`, `SpeaksDoDraw`, `SpeaksManual`,
-  `TraineesArea`, `FormacoesArea`, `IntroSplash`.
+  `TraineesArea`, `FormacoesArea`, `IntroSplash`, `AltaGestaoArea` (login com senha própria,
+  `senha_alta_gestao`), `MembrosGestaoArea` (roster de membros/gestão + grade de presença
+  semanal, reaproveitando as semanas de `trainee_semanas`).
 - `src/components/ui/` — primitivos reutilizáveis: `Card`, `Button`, `Alert`,
   `Autocomplete`, `ConfirmModal`, `DataBR`, `Toaster`, `Icons` (ícones SVG), `LineChart`,
   `Decor`, `OlhoBigBrother`.
@@ -82,11 +88,16 @@ Fatos validados:
 - Arquivos SQL em `supabase/`. São aplicados **manualmente** no SQL Editor do Supabase —
   **não há migração automática**. Ordem de execução:
   `schema.sql` → `functions.sql` → `speaks.sql` → `extras.sql` → `sala-manual.sql` →
-  `trainees.sql` → `formacoes.sql` → `whatsapp.sql`.
+  `trainees.sql` → `formacoes.sql` → `whatsapp.sql` → `gestao.sql`.
 - Quase tudo é `create or replace` / `create ... if not exists` (reexecutável). Exceção:
   o bloco SEED de pessoas no fim do `schema.sql` **duplica** se rodar 2×.
 - Ações de admin = funções RPC **protegidas por senha** (em `functions.sql`/`extras.sql`,
   validam `_checar_admin`). Leitura e escrita de presença, speaks e trainees são públicas via RLS.
+- `gestao.sql` cria `membros_gestao` (papel `membro`/`gestao` por pessoa, auto-cadastro
+  público como `trainees`) e a senha `senha_alta_gestao` (config). Um gatilho no banco
+  (`trg_bloquear_trainee_membro_gestao`) recusa insert/update se a pessoa já for trainee
+  na temporada ativa, com a mensagem exata "Você é trainee, ainda não pode registrar
+  para AEXs" — é essa mensagem que chega em `error.message` no front-end.
 - Se uma mudança de código exigir mudança de schema, adicione a SQL no arquivo apropriado
   de `supabase/` e **avise o usuário que precisa rodá-la no Supabase** — o agente não consegue aplicá-la.
 
