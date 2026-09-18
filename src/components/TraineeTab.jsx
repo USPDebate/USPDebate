@@ -14,10 +14,10 @@ import {
 import {
   verificarSenhaTrainee, getTrainees, getTraineeSemanas, getFormacoes,
   enviarFormacao, removerImagemFormacao, urlDaImagem,
-  traineeTemWhatsapp, salvarWhatsappTrainee,
+  traineeTemWhatsapp, traineeWhatsappMascarado, salvarWhatsappTrainee,
 } from '@/lib/supabase';
 import { comprimirImagem } from '@/lib/imagem';
-import { mascararWhatsapp, normalizarWhatsapp } from '@/lib/whatsapp';
+import { mascararWhatsapp, normalizarWhatsapp, ocultarWhatsapp } from '@/lib/whatsapp';
 import { toast } from '@/lib/toast';
 
 const SESSAO = 'uspd_trainee';
@@ -61,6 +61,7 @@ export default function TraineeTab() {
   const [visual, setVisual] = useState(null);   // { urls, indice }
   const [zap, setZap] = useState(null);   // null = conferindo · true/false = tem WhatsApp
   const [trocandoZap, setTrocandoZap] = useState(false);
+  const [zapAtual, setZapAtual] = useState(null);   // número mascarado, ex.: (11) •••••-5678
   const inputs = useRef({});
 
   useEffect(() => {
@@ -141,9 +142,14 @@ export default function TraineeTab() {
     if (!logado || !euId) { setZap(null); return undefined; }
     let vivo = true;
     setZap(null);
-    traineeTemWhatsapp({ senha, pessoaId: euId }).then((r) => {
+    Promise.all([
+      traineeTemWhatsapp({ senha, pessoaId: euId }),
+      traineeWhatsappMascarado({ senha, pessoaId: euId }),
+    ]).then(([r, m]) => {
+      if (!vivo) return;
       // Se a checagem falhar (ex.: whatsapp.sql ainda não rodado), não trava o trainee.
-      if (vivo) setZap(r.ok ? r.tem : true);
+      setZap(r.ok ? r.tem : true);
+      setZapAtual(m.ok ? m.numero : null);
     });
     return () => { vivo = false; };
   }, [logado, euId, senha]);
@@ -283,7 +289,10 @@ export default function TraineeTab() {
         senha={senha}
         eu={eu}
         primeiroAcesso={!zap}
-        onSalvo={() => { setZap(true); setTrocandoZap(false); }}
+        numeroAtual={zapAtual}
+        onSalvo={(numero) => {
+          setZap(true); setZapAtual(ocultarWhatsapp(numero)); setTrocandoZap(false);
+        }}
         onCancelar={() => setTrocandoZap(false)}
         onNaoSouEu={naoSouEu}
       />
@@ -335,12 +344,15 @@ export default function TraineeTab() {
             <div className="text-[15px] font-semibold">{eu.nome}</div>
             {eu.mentor && <div className="text-[11px] text-muted">Mentor: {eu.mentor}</div>}
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <LinkButton onClick={() => setTrocandoZap(true)}>
-              <IconWhatsapp className="w-3.5 h-3.5" />Trocar WhatsApp
-            </LinkButton>
-            <LinkButton onClick={naoSouEu}>Não sou eu</LinkButton>
+          <LinkButton onClick={naoSouEu}>Não sou eu</LinkButton>
+        </div>
+        <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-[12px] min-w-0">
+            <IconWhatsapp className="w-4 h-4 shrink-0 text-[#25d366]" />
+            <span className="text-muted">WhatsApp:</span>
+            <span className="text-text whitespace-nowrap">{zapAtual || 'cadastrado'}</span>
           </div>
+          <LinkButton onClick={() => setTrocandoZap(true)}>Número errado? Trocar</LinkButton>
         </div>
       </Card>
 
@@ -373,7 +385,9 @@ export default function TraineeTab() {
   );
 }
 
-function CadastroWhatsapp({ senha, eu, primeiroAcesso, onSalvo, onCancelar, onNaoSouEu }) {
+function CadastroWhatsapp({
+  senha, eu, primeiroAcesso, numeroAtual, onSalvo, onCancelar, onNaoSouEu,
+}) {
   const [valor, setValor] = useState('');
   const [erro, setErro] = useState(null);
   const [salvando, setSalvando] = useState(false);
@@ -389,7 +403,7 @@ function CadastroWhatsapp({ senha, eu, primeiroAcesso, onSalvo, onCancelar, onNa
     setSalvando(false);
     if (!res.ok) { setErro(res.erro); return; }
     toast('success', 'WhatsApp salvo.');
-    onSalvo();
+    onSalvo(numero);
   }
 
   return (
@@ -404,7 +418,10 @@ function CadastroWhatsapp({ senha, eu, primeiroAcesso, onSalvo, onCancelar, onNa
         {primeiroAcesso
           ? <>Olá, <span className="text-text">{eu.nome}</span>! Antes de continuar, informe o
             seu número de WhatsApp.</>
-          : <>Informe o novo número de WhatsApp de <span className="text-text">{eu.nome}</span>.</>}
+          : <>
+            {numeroAtual && <>Número atual: <span className="text-text">{numeroAtual}</span>. </>}
+            Informe o número certo de WhatsApp de <span className="text-text">{eu.nome}</span>.
+          </>}
         {' '}A diretoria usa só para avisar sobre as formações — ele não aparece para os
         outros trainees.
       </p>

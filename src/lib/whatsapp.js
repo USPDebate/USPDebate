@@ -27,6 +27,13 @@ export function normalizarWhatsapp(s) {
   return /^[1-9][0-9]9[0-9]{8}$/.test(d) ? '55' + d : null;
 }
 
+// Mesmo formato do trainee_whatsapp_mascarado: (11) •••••-5678
+export function ocultarWhatsapp(numero) {
+  const d = nacional(numero);
+  if (d.length !== 11) return '';
+  return `(${d.slice(0, 2)}) •••••-${d.slice(7)}`;
+}
+
 export function linkWhatsapp(numero, texto) {
   const base = `https://wa.me/${digitos(numero)}`;
   return texto ? `${base}?text=${encodeURIComponent(texto)}` : base;

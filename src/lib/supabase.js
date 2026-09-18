@@ -565,6 +565,15 @@ export async function traineeTemWhatsapp({ senha, pessoaId }) {
   return { ok: true, tem: data === true };
 }
 
+// Número mascarado, ex.: (11) •••••-5678 — para o trainee conferir o cadastro.
+export async function traineeWhatsappMascarado({ senha, pessoaId }) {
+  const { data, error } = await sb.rpc('trainee_whatsapp_mascarado', {
+    p_senha: senha, p_pessoa_id: pessoaId,
+  });
+  if (error) return { ok: false, erro: error.message };
+  return { ok: true, numero: data || null };
+}
+
 export async function salvarWhatsappTrainee({ senha, pessoaId, whatsapp }) {
   const { error } = await sb.rpc('salvar_whatsapp_trainee', {
     p_senha: senha, p_pessoa_id: pessoaId, p_whatsapp: whatsapp,

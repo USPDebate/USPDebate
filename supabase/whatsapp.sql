@@ -31,6 +31,24 @@ end;
 $$;
 grant execute on function trainee_tem_whatsapp(text, bigint) to anon;
 
+-- Número cadastrado, mascarado: o trainee confere se está certo, mas a senha
+-- de trainee (compartilhada) não expõe o número inteiro dos outros.
+create or replace function trainee_whatsapp_mascarado(p_senha text, p_pessoa_id bigint)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v text;
+begin
+  perform _checar_trainee(p_senha);
+  select w.whatsapp into v from trainee_whatsapp w where w.pessoa_id = p_pessoa_id;
+  if v is null then return null; end if;
+  return '(' || substr(v, 3, 2) || ') •••••-' || right(v, 4);
+end;
+$$;
+grant execute on function trainee_whatsapp_mascarado(text, bigint) to anon;
+
 -- Grava/troca o número. Aceita com ou sem máscara e com ou sem +55;
 -- exige celular brasileiro: DDD + 9 dígitos começando em 9.
 create or replace function salvar_whatsapp_trainee(
