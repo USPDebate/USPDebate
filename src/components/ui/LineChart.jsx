@@ -1,6 +1,9 @@
+import { useId } from 'react';
+
 // Gráfico de linha em SVG puro — sem biblioteca, leve, tema escuro.
 // series: [{ nome, cor, pontos: [{ x: 'rótulo', y: número }] }]
 export default function LineChart({ series = [], altura = 200 }) {
+  const uid = useId();
   const todos = series.flatMap((s) => s.pontos);
   if (todos.length === 0) {
     return <p className="text-sm text-muted py-8 text-center">Sem dados para o gráfico.</p>;
@@ -53,12 +56,22 @@ export default function LineChart({ series = [], altura = 200 }) {
       {/* séries */}
       {series.map((s, si) => {
         const pts = s.pontos.map((p, i) => `${px(i)},${py(p.y)}`).join(' ');
+        const area = `${px(0)},${py(minY)} ${pts} ${px(s.pontos.length - 1)},${py(minY)}`;
+        const gradId = `${uid}-grad-${si}`;
         return (
           <g key={si}>
-            <polyline points={pts} fill="none" stroke={s.cor} strokeWidth="2"
-              strokeLinejoin="round" strokeLinecap="round" />
+            <defs>
+              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={s.cor} stopOpacity="0.32" />
+                <stop offset="100%" stopColor={s.cor} stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <polygon points={area} fill={`url(#${gradId})`} className="animate-fade-up" />
+            <polyline points={pts} fill="none" stroke={s.cor} strokeWidth="2.5" pathLength="1"
+              strokeLinejoin="round" strokeLinecap="round" className="chart-line" />
             {s.pontos.map((p, i) => (
-              <circle key={i} cx={px(i)} cy={py(p.y)} r="3" fill={s.cor} />
+              <circle key={i} cx={px(i)} cy={py(p.y)} r="3" fill={s.cor}
+                className="chart-point" style={{ animationDelay: `${950 + i * 35}ms` }} />
             ))}
           </g>
         );
