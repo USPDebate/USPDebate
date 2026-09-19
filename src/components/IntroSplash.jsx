@@ -32,11 +32,11 @@ export default function IntroSplash() {
     // StrictMode monta o efeito 2x (monta → limpa → monta), e gravar aqui
     // faria a 2ª montagem já achar "visto hoje" e pular a abertura.
     const passo = setInterval(() => setContagem((c) => (c >= 100 ? c : c + 4)), 40);
-    const t1 = setTimeout(() => setSaindo(true), 2400);
+    const t1 = setTimeout(() => setSaindo(true), 5200);
     const t2 = setTimeout(() => {
       try { localStorage.setItem(CHAVE_VISTO, hoje); } catch { /* sem storage, tudo bem */ }
       setFim(true);
-    }, 3060);
+    }, 5850);
     return () => { clearInterval(passo); clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
