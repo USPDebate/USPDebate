@@ -50,6 +50,19 @@ h1, h2, h3, .font-display {
 .animate-drop   { animation: dropIn .5s cubic-bezier(.2,.7,.2,1) both; }
 .animate-rise   { animation: riseIn .55s cubic-bezier(.2,.7,.2,1) both; }
 
+/* Textura de fundo — faixas diagonais bem escuras, substituem o feixe de
+   linhas bordô como camada de base. Trecho sólido longo, queda rápida pra
+   uma versão semitransparente da própria cor, rampa longa até um tom
+   levemente mais claro, reset abrupto no bloco seguinte — essa proporção dá
+   a sensação de relevo/3D nas faixas. */
+.decor-stripes {
+  background: repeating-linear-gradient(135deg,
+    #100c0d 0px,
+    #100c0d 60px,
+    #100c0d99 70px,
+    #1c1315 130px);
+}
+
 /* Fundo decorativo — feixe de linhas que deriva lentamente.
    2 camadas em direções opostas dão sensação de profundidade.
    Translações pequenas o suficiente pra ficarem dentro do overflow das curvas. */
@@ -73,6 +86,19 @@ h1, h2, h3, .font-display {
 
 @media (prefers-reduced-motion: reduce) {
   .decor-drift-a, .decor-drift-b, .decor-glow { animation: none; }
+}
+
+/* Nav inferior (mobile) — pill que "estoura" com uma mola atrás do item ativo,
+   inspirado no hover-lift do Mac Dock, adaptado pra toque: aqui não tem hover,
+   então o pop acontece ao entrar no DOM, ou seja, toda vez que a aba muda. */
+@keyframes navPop {
+  0%   { transform: scale(.4); opacity: 0; }
+  55%  { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-nav-pop { animation: navPop .5s cubic-bezier(.34,1.56,.64,1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-nav-pop { animation: none; }
 }
 
 /* Micro-interações */

@@ -51,7 +51,7 @@ export default function Page() {
       <header className="relative z-10 bg-gradient-to-br from-[#120c0e]/90 to-bordo-soft/40
         px-5 py-6 flex items-end justify-between border-b border-border animate-drop">
         <div>
-          <h1 className="font-brand text-brand-gradient text-4xl sm:text-5xl tracking-tight leading-none">
+          <h1 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight leading-none">
             USP Debate
           </h1>
           <p className="text-[10px] uppercase tracking-[0.22em] text-gold/80 mt-2">
@@ -64,19 +64,28 @@ export default function Page() {
         </p>
       </header>
 
-      {/* Tabs (desktop) */}
-      <nav className="relative z-10 hidden sm:flex bg-[#120c0e]/80 px-5 border-b border-border">
-        {ABAS.map((a) => (
-          <button
-            key={a.id}
-            ref={(el) => { tabRefs.current[a.id] = el; }}
-            onClick={() => setAba(a.id)}
-            className={`px-4 py-3 text-[10px] uppercase tracking-[0.13em] transition-colors
-              ${aba === a.id ? 'text-gold' : 'text-muted hover:text-text'}`}
-          >
-            {a.label}
-          </button>
-        ))}
+      {/* Tabs (desktop) — hover levanta e amplia o ícone (dock-like), com uma
+          pill dourada translúcida atrás do item; a barra ganha um leve vidro
+          sobre o fundo novo. */}
+      <nav className="relative z-10 hidden sm:flex bg-[#120c0e]/70 backdrop-blur-md px-5 border-b border-border">
+        {ABAS.map((a) => {
+          const Ic = a.icon;
+          const ativo = aba === a.id;
+          return (
+            <button
+              key={a.id}
+              ref={(el) => { tabRefs.current[a.id] = el; }}
+              onClick={() => setAba(a.id)}
+              className={`group relative flex items-center gap-1.5 px-4 py-3 text-[10px] uppercase tracking-[0.13em]
+                transition-transform duration-200 hover:-translate-y-0.5
+                ${ativo ? 'text-gold' : 'text-muted hover:text-text'}`}
+            >
+              <span className="absolute inset-x-1.5 inset-y-1 -z-10 rounded-lg bg-gold/0 transition-colors duration-200 group-hover:bg-gold/10" />
+              <Ic className="w-3.5 h-3.5 shrink-0 transition-transform duration-200 group-hover:scale-125 group-hover:-translate-y-0.5" />
+              {a.label}
+            </button>
+          );
+        })}
         <span
           className="absolute bottom-0 h-[2px] bg-gold transition-[left,width] duration-300 ease-out"
           style={{ left: indicador.left, width: indicador.width }}
@@ -94,8 +103,10 @@ export default function Page() {
         {aba === 'admin'      && <AdminTab />}
       </main>
 
-      {/* Nav inferior (mobile) — ícone + rótulo */}
-      <nav className="sm:hidden fixed bottom-0 inset-x-0 bg-surface border-t border-border flex z-50">
+      {/* Nav inferior (mobile) — ícone + rótulo. Sem hover no toque, então o
+          "dinamismo" aqui é uma pill bordô que estoura com uma mola atrás do
+          item ativo, mais feedback de escala em qualquer toque. */}
+      <nav className="sm:hidden fixed bottom-0 inset-x-0 bg-surface/90 backdrop-blur-md border-t border-border flex z-50">
         {ABAS.map((a) => {
           const Ic = a.icon;
           const ativo = aba === a.id;
@@ -103,12 +114,17 @@ export default function Page() {
             <button
               key={a.id}
               onClick={() => setAba(a.id)}
-              className={`flex-1 min-w-0 flex flex-col items-center gap-0.5 py-2 transition
-                ${ativo ? 'text-bordo' : 'text-muted'}`}
+              className="relative flex-1 min-w-0 flex justify-center py-2 transition-transform active:scale-90"
             >
-              <Ic className={`w-5 h-5 shrink-0 transition-transform ${ativo ? 'scale-[1.15]' : ''}`} />
-              <span className="w-full px-0.5 text-[8px] font-semibold uppercase tracking-tight
-                text-center truncate">{a.label}</span>
+              <span className="relative flex flex-col items-center gap-0.5">
+                {ativo && (
+                  <span className="animate-nav-pop absolute -inset-x-2.5 -inset-y-1.5 -z-10 rounded-2xl
+                    bg-gradient-to-br from-bordo to-bordo-soft" />
+                )}
+                <Ic className={`w-5 h-5 shrink-0 transition-transform ${ativo ? 'scale-[1.15] text-white' : 'text-muted'}`} />
+                <span className={`w-full px-0.5 text-[8px] font-semibold uppercase tracking-tight text-center truncate
+                  ${ativo ? 'text-white' : 'text-muted'}`}>{a.label}</span>
+              </span>
             </button>
           );
         })}

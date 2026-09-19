@@ -21,7 +21,7 @@ function iniciais(nome) {
 
 function SeletorTipo({ value, onChange }) {
   return (
-    <div className="flex gap-1.5 items-stretch">
+    <div className="flex flex-col gap-2">
       {TIPOS.map((t) => {
         const ativo = value === t.id;
         const Ico = t.Icon;
@@ -30,14 +30,31 @@ function SeletorTipo({ value, onChange }) {
             key={t.id}
             type="button"
             onClick={() => onChange(t.id)}
-            className={`flex-1 flex items-center justify-center gap-2 rounded-xl text-[11px]
-              font-semibold uppercase tracking-wide border transition-all duration-300 ease-out
+            className={`relative flex min-h-[80px] items-center overflow-visible text-left
+              transition-all duration-300 ease-out
               ${ativo
-                ? 'bg-gradient-to-br from-bordo to-bordo-soft text-white border-bordo shadow-xl shadow-bordo/40 py-4 scale-[1.05] z-10'
-                : 'bg-surface-2 text-muted border-border py-2.5 opacity-60 hover:opacity-100'}`}
+                ? 'rounded-[30px_10px_30px_10px] bg-gradient-to-br from-bordo to-bordo-soft'
+                : 'rounded-[20px_8px_20px_8px] bg-surface-2 border border-border hover:border-bordo/40'}`}
           >
-            <Ico className="w-4 h-4 shrink-0" />
-            {t.label}
+            {ativo && (
+              <span className="absolute -top-[10px] left-[18px] z-[2] -rotate-[4deg] rounded-full
+                bg-white px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wide text-bordo shadow-lg">
+                ✓ selecionado
+              </span>
+            )}
+            <span
+              className={`absolute right-[18px] top-1/2 z-[1] flex h-10 w-10 shrink-0 -translate-y-1/2
+                items-center justify-center rounded-full
+                ${ativo ? 'bg-white/[0.13]' : 'bg-surface'}`}
+            >
+              <Ico className={`h-[19px] w-[19px] ${ativo ? 'text-white' : 'text-gold'}`} />
+            </span>
+            <span
+              className={`relative z-[1] pl-6 pr-[78px] text-xl font-bold tracking-tight
+                ${ativo ? 'text-white' : 'text-text'}`}
+            >
+              {t.label}
+            </span>
           </button>
         );
       })}
