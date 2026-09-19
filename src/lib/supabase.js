@@ -542,6 +542,62 @@ export async function toggleFormacao({ pessoaId, semanaId, feito }) {
   return { ok: !error };
 }
 
+// ── Membros e gestão ────────────────────────────────────────
+export async function verificarSenhaAltaGestao(senha) {
+  const { data, error } = await sb.rpc('verificar_senha_alta_gestao', { p_senha: senha });
+  return !error && data === true;
+}
+
+export async function getMembrosGestao() {
+  const temp = await temporadaAtiva();
+  if (!temp) return [];
+  const [mg, pess] = await Promise.all([
+    sb.from('membros_gestao').select('pessoa_id,papel,criado_em').eq('temporada_id', temp.id),
+    sb.from('pessoas').select('id,nome'),
+  ]);
+  if (mg.error || !mg.data) return [];
+  const nomeDe = new Map((pess.data || []).map((p) => [p.id, p.nome]));
+  return mg.data
+    .map((r) => ({ pessoaId: r.pessoa_id, nome: nomeDe.get(r.pessoa_id) || '', papel: r.papel }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
+// Auto-cadastro (ou correção pelo admin): upsert do papel de uma pessoa.
+// Se a pessoa for trainee na temporada ativa, o gatilho no banco recusa
+// com a mensagem "Você é trainee, ainda não pode registrar para AEXs".
+export async function registrarMembroGestao({ nome, pessoaId, papel }) {
+  try {
+    const temp = await temporadaAtiva();
+    if (!temp) return { ok: false, erro: 'Nenhuma temporada ativa.' };
+    let pid = pessoaId;
+    if (!pid) {
+      const pessoa = await acharOuCriarPessoa(nome);
+      if (!pessoa) return { ok: false, erro: 'Nome inválido.' };
+      pid = pessoa.id;
+    }
+    const { error } = await sb.from('membros_gestao')
+      .upsert(
+        { temporada_id: temp.id, pessoa_id: pid, papel },
+        { onConflict: 'temporada_id,pessoa_id' },
+      );
+    if (error) return { ok: false, erro: error.message };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, erro: String(e.message || e) };
+  }
+}
+
+export async function removerMembrosGestao(pessoaIds) {
+  const temp = await temporadaAtiva();
+  if (!temp) return { ok: false, erro: 'Nenhuma temporada ativa.' };
+  const ids = [...new Set((pessoaIds || []).filter(Boolean))];
+  if (!ids.length) return { ok: false, erro: 'Selecione pelo menos uma pessoa.' };
+  const { error } = await sb.from('membros_gestao')
+    .delete().eq('temporada_id', temp.id).in('pessoa_id', ids);
+  if (error) return { ok: false, erro: error.message };
+  return { ok: true, n: ids.length };
+}
+
 // ── Formações dos trainees ──────────────────────────────────
 // A imagem vai para o bucket 'formacoes' (público para leitura por URL, mas
 // sem policy de listagem: o nome é UUID, então só chega quem recebeu o

@@ -140,6 +140,15 @@ export function IconWhatsapp(props) {
   );
 }
 
+export function IconShield(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 3 4 6v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V6l-8-3Z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
 export function IconImage(props) {
   return (
     <svg {...base} {...props}>

@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
 
 // ⚠️ AJUSTE: nome EXATO do repositório no GitHub.
-// Site fica em https://gzimmerdev.github.io/<REPO>/  → basePath precisa ser "/<REPO>".
-// Se o repositório for "gzimmerdev.github.io" (site raiz), deixe REPO = "".
+// Site fica em https://uspdebate.github.io/<REPO>/  → basePath precisa ser "/<REPO>".
+// Se o repositório for "uspdebate.github.io" (site raiz), deixe REPO = "".
 const REPO = 'USPDebate';
 
 const isProd = process.env.NODE_ENV === 'production';
