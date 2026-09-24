@@ -8,6 +8,24 @@ export const POS_STYLE = {
   CO: 'bg-bordo/20 text-bordo border-bordo/40',
 };
 
+// Posição como letra colorida (aba Draw): tom apagado por posição e CO fora do
+// bordô, que é a cor de ação. A letra carrega a informação; a cor só ajuda a achar.
+export const POS_LETRA = {
+  OG: 'text-emerald-300/75',
+  OO: 'text-sky-300/75',
+  CG: 'text-orange-300/75', // laranja, não âmbar: dourado é a cor do foco
+  CO: 'text-violet-300/75',
+};
+
+// Bancada na planta da sala (Draw e Speaks): o encosto fica do lado de fora
+// (Governo à esquerda, Oposição à direita) e o texto espelha pro lado do corredor.
+export const POS_BANCADA = {
+  OG: 'border-l-[3px] border-emerald-300/40', OO: 'border-r-[3px] border-sky-300/40 text-right',
+  CG: 'border-l-[3px] border-orange-300/40', CO: 'border-r-[3px] border-violet-300/40 text-right',
+};
+// Ordem da planta numa grade de 2 colunas: frente (abertura) em cima, fechamento embaixo.
+export const PLANTA = ['OG', 'OO', 'CG', 'CO'];
+
 // Converte as linhas cruas da planilha (getDrawData) em { salas, juizes }.
 export function parsearDraw(dados) {
   const salas = [];
@@ -78,4 +96,29 @@ export function nomesDoDraw(draw) {
   });
   (draw.juizes || []).forEach((j) => { if (j) set.add(norm(j)); });
   return set;
+}
+
+// Nome por extenso de cada posição (card "Onde eu estou?").
+export const POS_NOME = {
+  OG: 'Governo de Abertura',
+  OO: 'Oposição de Abertura',
+  CG: 'Governo de Fechamento',
+  CO: 'Oposição de Fechamento',
+};
+
+// Onde uma pessoa está no draw: debatendo (sala, posição, dupla), julgando uma sala,
+// juiz geral, ou null se o nome não aparece.
+export function ondeEstou(draw, nome) {
+  if (!draw || !nome) return null;
+  const n = norm(nome);
+  for (const sala of draw.salas || []) {
+    for (const pos of sala.posicoes || []) {
+      const p2 = semPar(pos.p2) ? '' : pos.p2;
+      if (norm(pos.p1 || '') === n) return { papel: 'debate', sala, pos, dupla: p2 };
+      if (p2 && norm(p2) === n) return { papel: 'debate', sala, pos, dupla: pos.p1 };
+    }
+    if (panelSala(sala).some((j) => norm(j) === n)) return { papel: 'juiz', sala };
+  }
+  if ((draw.juizes || []).some((j) => norm(j) === n)) return { papel: 'geral' };
+  return null;
 }

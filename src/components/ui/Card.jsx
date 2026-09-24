@@ -2,7 +2,7 @@ export default function Card({ children, className = '', style }) {
   return (
     <div
       style={style}
-      className={`bg-surface border border-border rounded-xl2 p-5 sm:p-6 animate-rise ${className}`}
+      className={`glass rounded-xl2 p-5 sm:p-6 animate-rise ${className}`}
     >
       {children}
     </div>

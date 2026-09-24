@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Card, { SectionLabel } from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
+import FormSenha from '@/components/ui/FormSenha';
 import Alert from '@/components/ui/Alert';
 import MembrosGestaoArea from '@/components/MembrosGestaoArea';
 import { IconShield } from '@/components/ui/Icons';
@@ -33,7 +33,7 @@ export default function AltaGestaoArea() {
     setEntrando(true);
     const ok = await verificarSenhaAltaGestao(senha);
     setEntrando(false);
-    if (!ok) { setAlertaLogin({ tipo: 'error', msg: 'Senha incorreta.' }); return; }
+    if (!ok) { setAlertaLogin({ tipo: 'error', msg: ok === null ? 'Sem conexão com o servidor. Confira a internet e tente de novo.' : 'Senha incorreta.' }); return; }
     try { sessionStorage.setItem(SESSAO, JSON.stringify({ senha, ts: Date.now() })); } catch (e) {}
     setLogado(true);
   }
@@ -46,15 +46,8 @@ export default function AltaGestaoArea() {
           Senha separada da administrativa — controla o cadastro de membros e gestão.
         </p>
         {alertaLogin && <Alert tipo={alertaLogin.tipo} msg={alertaLogin.msg} />}
-        <input
-          type="password"
-          value={senha}
-          onChange={(e) => setSenha(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && entrar()}
-          placeholder="Senha de alta gestão"
-          className="w-full px-3.5 py-3 rounded-lg text-base outline-none focus:border-bordo mb-3"
-        />
-        <Button onClick={entrar} loading={entrando}>Entrar</Button>
+        <FormSenha usuario="alta-gestao" rotulo="Senha de alta gestão"
+          value={senha} onChange={setSenha} onEntrar={entrar} loading={entrando} />
       </Card>
     );
   }

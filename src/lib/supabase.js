@@ -2,6 +2,7 @@
 // Substitui completamente o Apps Script / JSONP.
 import { createClient } from '@supabase/supabase-js';
 import { gerarSalas } from './drawgen';
+import { hojeISO } from '@/lib/datas';
 
 const SUPABASE_URL = 'https://cynzkhrslofjrfwibgrp.supabase.co';
 // anon key — pública por design (protegida por RLS no banco).
@@ -13,13 +14,6 @@ export const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 // ── Helpers ─────────────────────────────────────────────────
 export function norm(s) {
   return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-}
-
-function hojeISO() {
-  const d = new Date();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
 let _temp = null;
@@ -159,7 +153,7 @@ export async function apagarPresenca({ presencaId, senha }) {
 // ── Admin / senha ───────────────────────────────────────────
 export async function verificarSenha(senha) {
   const { data, error } = await sb.rpc('verificar_senha', { p_senha: senha });
-  return !error && data === true;
+  return error ? null : data === true;
 }
 
 // ── Draw ────────────────────────────────────────────────────
@@ -545,7 +539,7 @@ export async function toggleFormacao({ pessoaId, semanaId, feito }) {
 // ── Membros e gestão ────────────────────────────────────────
 export async function verificarSenhaAltaGestao(senha) {
   const { data, error } = await sb.rpc('verificar_senha_alta_gestao', { p_senha: senha });
-  return !error && data === true;
+  return error ? null : data === true;
 }
 
 export async function getMembrosGestao() {
@@ -607,7 +601,7 @@ const BUCKET = 'formacoes';
 
 export async function verificarSenhaTrainee(senha) {
   const { data, error } = await sb.rpc('verificar_senha_trainee', { p_senha: senha });
-  return !error && data === true;
+  return error ? null : data === true;
 }
 
 // ── WhatsApp dos trainees ──

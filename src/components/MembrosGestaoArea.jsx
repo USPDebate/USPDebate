@@ -13,24 +13,12 @@ import {
 import { nomesDoDraw } from '@/lib/draw';
 import { norm } from '@/lib/data';
 import { toast } from '@/lib/toast';
+import { fmtCurto, isoDe } from '@/lib/datas';
 
 const PAPEIS = [
   { id: 'membro', label: 'Membro' },
   { id: 'gestao', label: 'Gestão' },
 ];
-
-function fmtCurto(iso) {
-  if (!iso) return '';
-  const [, m, d] = iso.split('-');
-  return `${d}/${m}`;
-}
-
-function isoDe(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dd}`;
-}
 
 // Segunda a domingo da semana que contém a data ISO — mesma regra da área de trainees.
 function semanaDe(iso) {
@@ -184,7 +172,7 @@ export default function MembrosGestaoArea() {
           <Autocomplete
             value={nomeNovo}
             options={pessoas.map((p) => p.nome)}
-            placeholder="Nome completo..."
+            placeholder="Nome completo…"
             onChange={(v) => setNomeNovo(v)}
           />
           <select

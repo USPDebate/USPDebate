@@ -17,6 +17,7 @@ import { nomesDoDraw } from '@/lib/draw';
 import { norm } from '@/lib/data';
 import { calibrar, ranking } from '@/lib/speaks-stats';
 import { toast } from '@/lib/toast';
+import { fmtCurto, isoDe } from '@/lib/datas';
 
 // Tira numeração / marcador do começo da linha: "1.", "2)", "-", "•", ". ".
 // Sem isso o nome entra no cadastro com o lixo junto e vira um duplicado.
@@ -36,19 +37,6 @@ function parseCSV(texto) {
   }).filter((t) => t.nome && t.nome.length >= 2);
   if (out.length && out[0].nome.toLowerCase() === 'nome') out.shift();
   return out;
-}
-
-function fmtCurto(iso) {
-  if (!iso) return '';
-  const [, m, d] = iso.split('-');
-  return `${d}/${m}`;
-}
-
-function isoDe(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dd}`;
 }
 
 // Segunda a domingo da semana que contém a data ISO.
@@ -365,7 +353,7 @@ export default function TraineesArea({ senha }) {
                   <DataBR value={s.data_fim}
                     onCommit={(iso) => editarData(s, 'data_fim', iso)} />
                 </div>
-                <button onClick={() => removerSemana(s.id)} className="text-danger p-1">
+                <button onClick={() => removerSemana(s.id)} aria-label={`Apagar semana ${i + 1}`} title="Apagar semana" className="text-danger p-1">
                   <IconTrash className="w-4 h-4" />
                 </button>
               </div>

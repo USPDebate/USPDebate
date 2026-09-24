@@ -3,18 +3,20 @@ module.exports = {
   content: ['./src/**/*.{js,jsx}'],
   theme: {
     extend: {
+      // rgb(... / <alpha-value>) em vez de var(--x) puro: só assim bg-bordo/15,
+      // border-danger/40 etc. são gerados (antes sumiam em silêncio).
       colors: {
-        bg:          'var(--bg)',
-        surface:     'var(--surface)',
-        'surface-2': 'var(--surface-2)',
-        border:      'var(--border)',
-        text:        'var(--text)',
-        muted:       'var(--muted)',
-        bordo:       'var(--bordo)',
-        'bordo-soft':'var(--bordo-soft)',
-        gold:        'var(--gold)',
-        success:     'var(--success)',
-        danger:      'var(--danger)',
+        bg:          'rgb(var(--bg-rgb) / <alpha-value>)',
+        surface:     'rgb(var(--surface-rgb) / <alpha-value>)',
+        'surface-2': 'rgb(var(--surface-2-rgb) / <alpha-value>)',
+        border:      'rgb(var(--border-rgb) / <alpha-value>)',
+        text:        'rgb(var(--text-rgb) / <alpha-value>)',
+        muted:       'rgb(var(--muted-rgb) / <alpha-value>)',
+        bordo:       'rgb(var(--bordo-rgb) / <alpha-value>)',
+        'bordo-soft':'rgb(var(--bordo-soft-rgb) / <alpha-value>)',
+        gold:        'rgb(var(--gold-rgb) / <alpha-value>)',
+        success:     'rgb(var(--success-rgb) / <alpha-value>)',
+        danger:      'rgb(var(--danger-rgb) / <alpha-value>)',
       },
       fontFamily: {
         display: ['var(--font-display)', 'Georgia', 'serif'],

@@ -6,6 +6,8 @@ const base = {
   strokeWidth: 1.8,
   strokeLinecap: 'round',
   strokeLinejoin: 'round',
+  // Decorativos: o texto/aria-label do botão ao redor é que nomeia a ação.
+  'aria-hidden': true,
 };
 
 export function IconUsers(props) {
@@ -42,6 +44,15 @@ export function IconCheck(props) {
     <svg {...base} {...props} strokeWidth="2">
       <circle cx="12" cy="12" r="9" />
       <path d="m8.5 12 2.5 2.5 4.5-5" />
+    </svg>
+  );
+}
+
+export function IconSearch(props) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
     </svg>
   );
 }

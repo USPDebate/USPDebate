@@ -3,3 +3,6 @@ node_modules/
 out/
 .DS_Store
 *.log
+# saída das ferramentas de navegador (podem ter logs do Chrome pessoal)
+.playwright-cli/
+.playwright-mcp/

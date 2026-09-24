@@ -1,11 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
-
-export function fmtBR(iso) {
-  if (!iso) return '';
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
-}
+import { fmtBR } from '@/lib/datas';
+import { toast } from '@/lib/toast';
 
 // 'dd/mm/aaaa' → 'aaaa-mm-dd', ou null se inválida.
 export function parseBR(str) {
@@ -31,10 +27,12 @@ export default function DataBR({ value, onCommit, className = '' }) {
       onChange={(e) => setTxt(e.target.value)}
       onBlur={() => {
         const iso = parseBR(txt);
-        if (iso) onCommit(iso); else setTxt(fmtBR(value));
+        if (iso) { onCommit(iso); return; }
+        if (txt.trim() && txt !== fmtBR(value)) toast('error', `Data inválida: “${txt}”. Use dd/mm/aaaa.`);
+        setTxt(fmtBR(value));
       }}
       className={`bg-surface border border-border rounded px-2 py-1 text-[12px]
-        text-text outline-none focus:border-bordo w-[92px] text-center ${className}`}
+        text-text outline-none focus:border-bordo w-[calc(10ch+1.25rem)] text-center ${className}`}
     />
   );
 }

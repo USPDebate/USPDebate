@@ -1,14 +1,16 @@
 'use client';
 import { useState, useEffect } from 'react';
-import Card, { SectionLabel } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Alert from '@/components/ui/Alert';
 import Autocomplete from '@/components/ui/Autocomplete';
-import { IconScale, IconCheck } from '@/components/ui/Icons';
+import Escolha from '@/components/ui/Escolha';
+import NotaInput from '@/components/ui/NotaInput';
+import { IconSearch } from '@/components/ui/Icons';
 import {
   listarPessoas, acharOuCriarPessoa, adicionarSalaManual, registrarSpeaks, getSpeaksDoDia,
 } from '@/lib/supabase';
-import { POS_STYLE } from '@/lib/draw';
+import { POS_LETRA, POS_BANCADA } from '@/lib/draw';
+import { POCO } from '@/lib/estilos';
 import { toast } from '@/lib/toast';
 
 const POSICOES = ['OG', 'OO', 'CG', 'CO'];
@@ -62,7 +64,7 @@ export default function SpeaksManual() {
     else if (modoNovoJuiz && juizNome.split(/\s+/).filter((x) => x.length >= 2).length < 2)
       jErr = 'Digite nome e sobrenome completos.';
     else if (!modoNovoJuiz && !pessoas.some((p) => p.nome === juizNome))
-      jErr = 'Selecione um nome da lista — ou clique em "Não estou na lista".';
+      jErr = 'Escolha seu nome na lista, ou use "Não está na lista? Cadastrar".';
 
     for (const k of KEYS) {
       const d = dados[k];
@@ -75,7 +77,7 @@ export default function SpeaksManual() {
           novosErros[k] = 'Digite nome e sobrenome completos.'; continue;
         }
         if (!d.novo && !d.ok) {
-          novosErros[k] = 'Selecione um nome da lista — ou clique em "primeira vez".'; continue;
+          novosErros[k] = 'Escolha o nome na lista, ou use "Primeira vez? Cadastrar".'; continue;
         }
       }
       const v = Number(d.speak);
@@ -88,7 +90,7 @@ export default function SpeaksManual() {
     setErros(novosErros);
 
     if (jErr || Object.keys(novosErros).length) {
-      setAlerta({ tipo: 'error', msg: 'Tem campo pra corrigir — destaquei em vermelho abaixo.' });
+      setAlerta({ tipo: 'error', msg: 'Tem campo pra corrigir. Destaquei em vermelho abaixo.' });
       setTimeout(() => {
         const el = document.querySelector('[data-erro="true"]');
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -121,7 +123,7 @@ export default function SpeaksManual() {
       const pid = resolvido[k].id;
       if (visto.has(pid)) {
         const outra = visto.get(pid);
-        const msg = `"${resolvido[k].nome}" aparece em duas posições — corrija para salvar.`;
+        const msg = `“${resolvido[k].nome}” aparece em duas posições. Corrija pra salvar.`;
         setErros((e) => ({ ...e, [k]: msg, [outra]: msg }));
         setAlerta({ tipo: 'error', msg });
         setSalvando(false);
@@ -200,214 +202,133 @@ export default function SpeaksManual() {
     }
   }
 
+  // Link secundário (cadastrar / voltar pra lista): texto, não pílula.
+  const linkSec = 'mt-1 py-1 text-[13px] text-muted hover:text-text underline-offset-4 hover:underline';
+
+  // Campo de nome de um orador: da lista (autocomplete) ou digitado (primeira vez).
+  function campoNome(k, rotulo) {
+    const d = dados[k];
+    return (
+      <>
+        {d.novo ? (
+          <input id={`manual-${k}`} type="text" value={d.nome}
+            onChange={(e) => upd(k, { nome: e.target.value })}
+            placeholder="Nome e sobrenome…"
+            className={`w-full px-3.5 text-base outline-none ${POCO}`} />
+        ) : (
+          <Autocomplete id={`manual-${k}`} value={d.nome} options={nomesPessoas}
+            placeholder="Digite pra buscar…" icon={IconSearch} inputClassName={POCO}
+            onChange={(v, esc) => upd(k, { nome: v, ok: esc })} />
+        )}
+        {(d.novo || (d.nome.trim() && !d.ok)) && (
+          <button type="button" onClick={() => upd(k, { novo: !d.novo, nome: '', ok: false })} className={linkSec}>
+            {d.novo ? 'Voltar pra lista de nomes' : 'Não está na lista? Cadastrar'}
+          </button>
+        )}
+      </>
+    );
+  }
+
   function linhaDebatedor(k, rotulo) {
     const d = dados[k];
     const erro = erros[k];
-    const fora = d.speak !== '' &&
-      (isNaN(Number(d.speak)) || Number(d.speak) < 50 || Number(d.speak) > 100);
     return (
-      <div
-        data-erro={erro ? 'true' : undefined}
-        className={`rounded-lg p-2 transition border-2 scroll-mt-24 ${erro
-          ? 'border-danger ring-2 ring-[#e0625a66] bg-[#e0625a1a]'
-          : 'border-transparent'}`}
-      >
-        <div className="flex items-start gap-2">
-          <div className="flex-1">
-            {d.novo ? (
-              <input
-                type="text"
-                value={d.nome}
-                onChange={(e) => upd(k, { nome: e.target.value })}
-                placeholder={`${rotulo} — nome e sobrenome`}
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none focus:border-bordo"
-              />
-            ) : (
-              <Autocomplete
-                value={d.nome}
-                options={nomesPessoas}
-                placeholder={`${rotulo} — selecione o nome`}
-                onChange={(v, esc) => upd(k, { nome: v, ok: esc })}
-              />
-            )}
-            <button
-              type="button"
-              onClick={() => upd(k, { novo: !d.novo, nome: '', ok: false })}
-              className={`mt-1.5 text-[10px] font-semibold rounded-full px-2.5 py-1 border transition
-                ${d.novo
-                  ? 'text-muted border-border hover:border-bordo/60 hover:text-bordo'
-                  : 'text-bordo border-bordo/40 bg-bordo/5 hover:bg-bordo/15'}`}
-            >
-              {d.novo ? '← Escolher da lista' : '+ Primeira vez (cadastrar)'}
-            </button>
-          </div>
-          <div className="flex flex-col items-end gap-0.5">
-            <input
-              type="number" inputMode="numeric" min={50} max={100}
-              value={d.speak}
-              onChange={(e) => upd(k, { speak: e.target.value })}
-              placeholder="—"
-              className={`w-16 px-1 py-2.5 rounded-lg text-center text-base font-bold outline-none
-                bg-[#ece4df] text-[#1a1212] border focus:border-bordo
-                ${fora ? 'border-danger ring-2 ring-[#e0625a66]' : 'border-border'}`}
-            />
-            {fora && <span className="text-[9px] text-danger font-semibold">50–100</span>}
-          </div>
+      <div data-erro={erro ? 'true' : undefined} className="scroll-mt-24">
+        <div className="flex justify-between gap-3 mb-1 text-[13px] text-muted">
+          <label htmlFor={`manual-${k}`}>{rotulo}</label>
+          <span aria-hidden="true" className="w-16 text-center">nota</span>
         </div>
-        {erro && (
-          <p className="text-[11px] text-danger font-semibold mt-1.5">{erro}</p>
-        )}
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">{campoNome(k, rotulo)}</div>
+          <NotaInput value={d.speak} rotulo={`Nota do ${rotulo.toLowerCase()}`} invalido={!!erro && d.speak === ''}
+            erroId={`erro-${k}`} onChange={(v) => upd(k, { speak: v })} />
+        </div>
+        {erro && <p id={`erro-${k}`} className="text-[13px] text-danger mt-1">{erro}</p>}
       </div>
     );
   }
 
   function linhaIron(pos) {
     const k1 = pos + '-1', k2 = pos + '-2';
-    const d = dados[k1];
-    const erro1 = erros[k1], erro2 = erros[k2];
-    const erro = erro1 || erro2;
-    const foraDe = (v) => v !== '' && (isNaN(Number(v)) || Number(v) < 50 || Number(v) > 100);
+    const erro = erros[k1] || erros[k2];
     return (
-      <div
-        data-erro={erro ? 'true' : undefined}
-        className={`rounded-lg p-2 transition border-2 scroll-mt-24 ${erro
-          ? 'border-danger ring-2 ring-[#e0625a66] bg-[#e0625a1a]'
-          : 'border-transparent'}`}
-      >
-        <div className="text-[10px] text-gold uppercase tracking-wider mb-1.5 font-semibold">
-          IRON — mesmo debatedor faz as duas falas
+      <div data-erro={erro ? 'true' : undefined} className="scroll-mt-24">
+        <label htmlFor={`manual-${k1}`} className="block text-[13px] text-muted mb-1">Iron</label>
+        {campoNome(k1, 'Iron')}
+        <div className="mt-3 flex items-center gap-3">
+          {[k1, k2].map((kk, i) => (
+            <label key={kk} className="flex items-center gap-2 text-[13px] text-muted">
+              <NotaInput value={dados[kk].speak} rotulo={`Nota da ${i === 0 ? '1ª' : '2ª'} fala do iron`} erroId={`erro-${k1}`}
+                onChange={(v) => upd(kk, { speak: v })} />
+              {i === 0 ? '1ª fala' : '2ª fala'}
+            </label>
+          ))}
         </div>
-        <div className="space-y-2">
-          {d.novo ? (
-            <input type="text" value={d.nome}
-              onChange={(e) => upd(k1, { nome: e.target.value })}
-              placeholder="Nome e sobrenome do iron"
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none focus:border-bordo" />
-          ) : (
-            <Autocomplete value={d.nome} options={nomesPessoas}
-              placeholder="Selecione o iron..."
-              onChange={(v, esc) => upd(k1, { nome: v, ok: esc })} />
-          )}
-          <button type="button"
-            onClick={() => upd(k1, { novo: !d.novo, nome: '', ok: false })}
-            className={`text-[10px] font-semibold rounded-full px-2.5 py-1 border transition
-              ${d.novo
-                ? 'text-muted border-border hover:border-bordo/60 hover:text-bordo'
-                : 'text-bordo border-bordo/40 bg-bordo/5 hover:bg-bordo/15'}`}>
-            {d.novo ? '← Escolher da lista' : '+ Primeira vez (cadastrar)'}
-          </button>
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            {[k1, k2].map((kk, i) => {
-              const v = dados[kk].speak;
-              const fora = foraDe(v);
-              return (
-                <div key={kk} className="flex flex-col items-center gap-1">
-                  <input type="number" inputMode="numeric" min={50} max={100}
-                    value={v}
-                    onChange={(e) => upd(kk, { speak: e.target.value })}
-                    placeholder="—"
-                    className={`w-full px-1 py-2.5 rounded-lg text-center text-base font-bold outline-none
-                      bg-[#ece4df] text-[#1a1212] border focus:border-bordo
-                      ${fora ? 'border-danger ring-2 ring-[#e0625a66]' : 'border-border'}`} />
-                  <span className="text-[10px] text-muted">{i === 0 ? '1ª fala' : '2ª fala'}</span>
-                </div>
-              );
-            })}
-          </div>
-          <p className="text-[10px] text-muted">Só a maior das duas notas vai para o registro.</p>
-        </div>
-        {erro && <p className="text-[11px] text-danger font-semibold mt-1.5">{erro}</p>}
+        <p className="text-[13px] text-muted mt-1.5">Só a maior das duas notas vai pro registro.</p>
+        {erro && <p id={`erro-${k1}`} className="text-[13px] text-danger mt-1">{erro}</p>}
       </div>
     );
   }
 
   return (
-    <Card style={{ animationDelay: '.05s' }}>
-      <SectionLabel icon={IconScale}>Sala manual (treino organizado)</SectionLabel>
+    <section aria-label="Sala manual" className="rounded-xl2 bg-surface p-5 sm:p-7 animate-rise focus-within:relative focus-within:z-10">
       {alerta && <Alert tipo={alerta.tipo} msg={alerta.msg} />}
-      <p className="text-[11px] text-muted mb-3">
-        Para treinos com salas já montadas. Preencha cada posição; a sala entra no draw do dia.
+      <p className="text-[15px] text-muted">
+        Pra treinos com salas já montadas. Preencha cada equipe; a sala entra no draw do dia.
+        Marque &quot;Iron&quot; quando uma pessoa faz as duas falas da equipe.
       </p>
 
       {/* Juiz */}
-      <div
-        data-erro={juizErro ? 'true' : undefined}
-        className={`mb-4 rounded-lg p-2 transition border-2 scroll-mt-24 ${juizErro
-          ? 'border-danger ring-2 ring-[#e0625a66] bg-[#e0625a1a]'
-          : 'border-transparent'}`}
-      >
-        <label className="block text-[10px] uppercase tracking-[0.15em] text-muted mb-2">
-          Seu nome (juiz da sala) *
-        </label>
+      <div data-erro={juizErro ? 'true' : undefined} className="mt-6 scroll-mt-24 sm:max-w-md">
+        <label htmlFor="manual-juiz" className="block text-[15px] font-medium text-text mb-2">Seu nome</label>
         {modoNovoJuiz ? (
           <>
-            <input
-              type="text" value={juiz}
+            <input id="manual-juiz" type="text" value={juiz}
               onChange={(e) => { setJuiz(e.target.value); setJuizErro(null); }}
-              placeholder="Digite seu nome e sobrenome completos..."
-              className="w-full px-3.5 py-3 rounded-lg text-base outline-none focus:border-bordo"
-            />
-            <button type="button"
-              onClick={() => { setModoNovoJuiz(false); setJuiz(''); setJuizErro(null); }}
-              className="mt-1.5 text-[11px] font-semibold rounded-full px-2.5 py-1 border
-                text-muted border-border hover:border-bordo/60 hover:text-bordo transition">
-              ← Escolher da lista
+              placeholder="Nome e sobrenome…"
+              className={`w-full px-3.5 text-base outline-none ${POCO}`} />
+            <button type="button" onClick={() => { setModoNovoJuiz(false); setJuiz(''); setJuizErro(null); }} className={linkSec}>
+              Voltar pra lista de nomes
             </button>
           </>
         ) : (
           <>
-            <Autocomplete value={juiz} options={nomesPessoas}
-              placeholder="Digite e selecione seu nome..."
+            <Autocomplete id="manual-juiz" value={juiz} options={nomesPessoas} placeholder="Digite pra buscar…"
+              icon={IconSearch} inputClassName={POCO}
               onChange={(v) => { setJuiz(v); setJuizErro(null); }} />
-            <button type="button"
-              onClick={() => { setModoNovoJuiz(true); setJuiz(''); setJuizErro(null); }}
-              className="mt-1.5 text-[11px] font-semibold rounded-full px-2.5 py-1 border
-                text-bordo border-bordo/40 bg-bordo/5 hover:bg-bordo/15 transition">
-              + Não estou na lista (cadastrar)
-            </button>
+            {juiz.trim() && !pessoas.some((p) => p.nome === juiz.trim()) && (
+              <button type="button" onClick={() => { setModoNovoJuiz(true); setJuiz(''); setJuizErro(null); }} className={linkSec}>
+                Não está na lista? Cadastrar
+              </button>
+            )}
           </>
         )}
-        {juizErro && (
-          <p className="text-[11px] text-danger font-semibold mt-1.5">{juizErro}</p>
-        )}
+        {juizErro && <p id="erro-juiz" className="text-[13px] text-danger mt-1">{juizErro}</p>}
       </div>
 
-      {/* Número da sala */}
-      <div className="mb-4">
-        <label className="block text-[10px] uppercase tracking-[0.15em] text-muted mb-2">
-          Número da sala
-        </label>
-        <div className="flex flex-wrap gap-1.5">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-            <button key={n} type="button" onClick={() => setSalaNum(n)}
-              className={`w-10 py-2 rounded-lg text-[13px] font-semibold border transition
-                ${salaNum === n
-                  ? 'bg-gradient-to-br from-bordo to-bordo-soft text-white border-bordo'
-                  : 'bg-surface-2 text-muted border-border hover:border-bordo/60'}`}>
-              {n}
-            </button>
-          ))}
-        </div>
+      <div className="mt-6">
+        <Escolha legenda="Número da sala" name="manual-sala" value={String(salaNum)}
+          onChange={(v) => setSalaNum(Number(v))} compacto
+          opcoes={[1, 2, 3, 4, 5, 6, 7, 8].map((n) => ({ valor: String(n), rotulo: String(n) }))} />
       </div>
 
-      {/* 4 equipes */}
-      <div className="space-y-3 mb-4">
+      {/* 4 equipes na planta da sala (igual à aba Draw): Governo à esquerda, Oposição à
+          direita, abertura na frente. No celular vira uma coluna na ordem OG, OO, CG, CO. */}
+      <ul className="mt-6 grid gap-3 sm:grid-cols-2 sm:gap-x-6">
+        <li aria-hidden="true" className="hidden sm:block text-[13px] text-muted -mb-1">Governo</li>
+        <li aria-hidden="true" className="hidden sm:block text-[13px] text-muted text-right -mb-1">Oposição</li>
         {POSICOES.map((pos) => (
-          <div key={pos} className="border border-border rounded-xl2 bg-surface-2">
-            <div className="px-4 py-2 bg-[#120c0e] rounded-t-xl2 flex items-center gap-2 justify-between">
-              <div className="flex items-center gap-2">
-                <span className={`text-[10px] font-bold py-1 px-2 rounded border
-                  ${POS_STYLE[pos]}`}>{pos}</span>
-                <span className="text-[11px] uppercase tracking-wider text-muted">Equipe</span>
-              </div>
-              <label className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase
-                tracking-wider cursor-pointer transition ${iron[pos] ? 'text-gold' : 'text-muted hover:text-text'}`}>
-                <input type="checkbox" checked={iron[pos]} onChange={() => toggleIron(pos)}
-                  className="accent-gold w-3.5 h-3.5" />
-                IRON
+          <li key={pos} className={`rounded-xl px-3 py-3 bg-white/[0.03] ${POS_BANCADA[pos].replace(' text-right', '')}`}>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-[15px] font-medium text-text">
+                <span className={`font-bold ${POS_LETRA[pos]}`}>{pos}</span>
+              </h3>
+              <label className="flex items-center gap-2 text-[13px] text-muted cursor-pointer min-h-[44px]">
+                <input type="checkbox" checked={iron[pos]} onChange={() => toggleIron(pos)} className="w-4 h-4 accent-[#f1ebe8]" />
+                Iron
               </label>
             </div>
-            <div className="p-3 space-y-3">
+            <div className="mt-2 space-y-4">
               {iron[pos] ? linhaIron(pos) : (
                 <>
                   {linhaDebatedor(pos + '-1', '1º orador')}
@@ -415,16 +336,13 @@ export default function SpeaksManual() {
                 </>
               )}
             </div>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
 
-      <Button onClick={salvar} loading={salvando}>
-        <span className="inline-flex items-center justify-center gap-2">
-          {!salvando && <IconCheck className="w-4 h-4" />}
-          {salvando ? 'Salvando...' : `Salvar Sala ${salaNum}`}
-        </span>
+      <Button onClick={salvar} loading={salvando} className="mt-4 h-[52px] !py-0 !shadow-none normal-case !tracking-normal !text-base">
+        {salvando ? 'Salvando…' : `Salvar Sala ${salaNum}`}
       </Button>
-    </Card>
+    </section>
   );
 }

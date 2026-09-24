@@ -8,12 +8,7 @@ import {
 } from '@/lib/supabase';
 import { nomesDoDraw } from '@/lib/draw';
 import { norm } from '@/lib/data';
-
-function fmtData(iso) {
-  if (!iso) return '';
-  const [a, m, d] = iso.split('-');
-  return `${d}/${m}/${a}`;
-}
+import { fmtBR } from '@/lib/datas';
 
 const ROTULO = {
   juiz: 'Juiz', observador: 'Observador', ps: 'Debatedor', visitante: 'Visitante',
@@ -88,7 +83,7 @@ export default function HistoricoTab() {
                   bg-surface-2 border border-border text-left transition animate-fade-up
                   hover:border-bordo/60 hover:-translate-y-0.5"
               >
-                <span className="text-[13px] font-semibold">{fmtData(dataISO)}</span>
+                <span className="text-[13px] font-semibold">{fmtBR(dataISO)}</span>
                 <span className="flex items-center gap-2">
                   {!publicadas.has(dataISO) && (
                     <span className="text-[10px] text-muted border border-border rounded-full px-2 py-0.5">
@@ -105,7 +100,7 @@ export default function HistoricoTab() {
 
       {detalhe && (
         <Card style={{ animationDelay: '.1s' }}>
-          <SectionLabel icon={IconClock}>Treino de {fmtData(detalhe.data)}</SectionLabel>
+          <SectionLabel icon={IconClock}>Treino de {fmtBR(detalhe.data)}</SectionLabel>
           {detalhe.draw === null || detalhe.presentes === null
             ? <div className="skeleton h-28 rounded-xl2" />
             : detalhe.draw.salas.length > 0
@@ -122,7 +117,7 @@ export default function HistoricoTab() {
         <Card style={{ animationDelay: '.14s' }}>
           <SectionLabel icon={IconUsers}>Presentes fora do draw</SectionLabel>
           <p className="text-xs text-muted mb-2.5">
-            Registraram presença em {fmtData(detalhe.data)} mas não foram alocados numa
+            Registraram presença em {fmtBR(detalhe.data)} mas não foram alocados numa
             sala nem como juiz geral. Contam como treino no acompanhamento de trainees.
           </p>
           <div className="space-y-1.5">

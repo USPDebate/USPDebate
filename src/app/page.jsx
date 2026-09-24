@@ -12,7 +12,7 @@ import Decor from '@/components/ui/Decor';
 import IntroSplash from '@/components/IntroSplash';
 import Toaster from '@/components/ui/Toaster';
 import {
-  IconCalendar, IconUsers, IconLayers, IconScale, IconChart, IconClock, IconLock, IconUpload,
+  IconUsers, IconLayers, IconScale, IconChart, IconClock, IconLock, IconUpload,
 } from '@/components/ui/Icons';
 
 const ABAS = [
@@ -25,41 +25,79 @@ const ABAS = [
   { id: 'admin',      label: 'Admin',      icon: IconLock },
 ];
 
+// Marca do cabeçalho: o balão do logo (o mesmo da abertura) + o nome.
+function Marca({ className = '' }) {
+  return (
+    <h1 className={`flex items-center justify-center gap-2.5 ${className}`}>
+      <img src="logo.png" alt="" width="30" height="25" className="w-[30px] h-auto" />
+      <span className="font-display text-xl font-semibold tracking-tight leading-none">USP Debate</span>
+    </h1>
+  );
+}
+
 export default function Page() {
   const [aba, setAba] = useState('presenca');
-  const [dataHoje, setDataHoje] = useState('');
-  const [indicador, setIndicador] = useState({ left: 0, width: 0 });
+  const [indicador, setIndicador] = useState({ left: 0, top: 0, width: 0 });
   const tabRefs = useRef({});
 
   useEffect(() => {
-    setDataHoje(new Date().toLocaleDateString('pt-BR', {
-      weekday: 'long', day: '2-digit', month: 'long',
-    }));
-    // Link de auto-cadastro (?aba=cadastro) — não fica no menu, só abre por link direto.
+    // ?aba=<id> abre direto na aba (recarregar não volta pra Presença e dá pra
+    // mandar link do Draw). `cadastro` é o auto-cadastro: não fica no menu, só abre por link.
     try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('aba') === 'cadastro') setAba('cadastro');
+      const pedida = new URLSearchParams(window.location.search).get('aba');
+      if (pedida === 'cadastro' || ABAS.some((a) => a.id === pedida)) setAba(pedida);
     } catch (e) {}
   }, []);
 
+  function irPara(id) {
+    setAba(id);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('aba', id);
+      window.history.replaceState(null, '', url);
+    } catch (e) {}
+  }
+
+  // Sublinhado da aba ativa: mede o botão. Remede no resize porque o layout das
+  // abas muda (uma linha em volta da marca no xl, embaixo dela antes disso).
   useEffect(() => {
-    const el = tabRefs.current[aba];
-    if (el) setIndicador({ left: el.offsetLeft, width: el.offsetWidth });
+    function medir() {
+      const el = tabRefs.current[aba];
+      if (el) setIndicador({ left: el.offsetLeft + 12, top: el.offsetTop + el.offsetHeight - 2, width: el.offsetWidth - 24 });
+    }
+    medir();
+    window.addEventListener('resize', medir);
+    return () => window.removeEventListener('resize', medir);
   }, [aba]);
+
+  // Função de render (não componente): componente declarado aqui dentro seria
+  // recriado a cada render e o botão perderia o foco depois do clique.
+  function renderAba(a) {
+    const Ic = a.icon;
+    const ativo = aba === a.id;
+    return (
+      <button
+        key={a.id}
+        ref={(el) => { tabRefs.current[a.id] = el; }}
+        onClick={() => irPara(a.id)}
+        aria-current={ativo ? 'page' : undefined}
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold
+          ${ativo ? 'text-text' : 'text-muted hover:text-text hover:bg-white/[0.04]'}`}
+      >
+        <Ic className={`w-4 h-4 shrink-0 ${ativo ? 'text-gold' : ''}`} />
+        {a.label}
+      </button>
+    );
+  }
 
   if (aba === 'cadastro') {
     return (
       <div className="relative min-h-screen pb-24">
         <Toaster />
         <Decor />
-        <header className="relative z-10 bg-gradient-to-br from-[#120c0e]/90 to-bordo-soft/40
-          px-5 py-6 border-b border-border animate-drop">
-          <h1 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight leading-none">
-            USP Debate
-          </h1>
-          <p className="text-[10px] uppercase tracking-[0.22em] text-gold/80 mt-2">
-            Sistema de Treinos BP
-          </p>
+        <header className="relative z-10 px-4 pt-5 pb-1 animate-drop">
+          <Marca />
         </header>
         <main className="relative z-10 max-w-7xl mx-auto px-4 py-4 sm:px-8 sm:py-6">
           <CadastroMembroTab />
@@ -74,50 +112,27 @@ export default function Page() {
       <Toaster />
       <Decor />
 
-      {/* Header */}
-      <header className="relative z-10 bg-gradient-to-br from-[#120c0e]/90 to-bordo-soft/40
-        px-5 py-6 flex items-end justify-between border-b border-border animate-drop">
-        <div>
-          <h1 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight leading-none">
-            USP Debate
-          </h1>
-          <p className="text-[10px] uppercase tracking-[0.22em] text-gold/80 mt-2">
-            Sistema de Treinos BP
-          </p>
-        </div>
-        <p className="flex items-center gap-1.5 text-[11px] text-muted text-right capitalize">
-          <IconCalendar className="w-3.5 h-3.5" />
-          {dataHoje}
-        </p>
+      {/* Cabeçalho transparente (ref.: nav do Superpower): sem faixa colorida, a marca
+          no centro e as abas em volta. No xl as abas se dividem dos dois lados da marca
+          (Admin na ponta, onde os sites põem o "Entrar"); do sm ao xl a marca fica em
+          cima e as abas numa linha centralizada embaixo; no celular só a marca, porque
+          as abas estão na barra de baixo. */}
+      <header className="relative z-10 animate-drop">
+        <nav aria-label="Abas" className="relative max-w-7xl mx-auto px-4 sm:px-8 pt-5 pb-1 sm:pb-2
+          flex flex-wrap items-center justify-center gap-x-1 gap-y-3
+          xl:grid xl:grid-cols-[1fr_auto_1fr] xl:gap-8">
+          <Marca className="order-first basis-full xl:order-2 xl:basis-auto" />
+          <div className="hidden sm:flex items-center gap-1 xl:order-1">
+            {ABAS.slice(0, 4).map(renderAba)}
+          </div>
+          <div className="hidden sm:flex items-center gap-1 xl:order-3 xl:justify-end">
+            {ABAS.slice(4).map(renderAba)}
+          </div>
+          <span aria-hidden="true"
+            className="hidden sm:block absolute h-[2px] rounded-full bg-gold motion-safe:transition-[left,top,width] motion-safe:duration-300 ease-out"
+            style={{ left: indicador.left, top: indicador.top, width: indicador.width }} />
+        </nav>
       </header>
-
-      {/* Tabs (desktop) — hover levanta e amplia o ícone (dock-like), com uma
-          pill dourada translúcida atrás do item; a barra ganha um leve vidro
-          sobre o fundo novo. */}
-      <nav className="relative z-10 hidden sm:flex bg-[#120c0e]/70 backdrop-blur-md px-5 border-b border-border">
-        {ABAS.map((a) => {
-          const Ic = a.icon;
-          const ativo = aba === a.id;
-          return (
-            <button
-              key={a.id}
-              ref={(el) => { tabRefs.current[a.id] = el; }}
-              onClick={() => setAba(a.id)}
-              className={`group relative flex items-center gap-1.5 px-4 py-3 text-[10px] uppercase tracking-[0.13em]
-                transition-transform duration-200 hover:-translate-y-0.5
-                ${ativo ? 'text-gold' : 'text-muted hover:text-text'}`}
-            >
-              <span className="absolute inset-x-1.5 inset-y-1 -z-10 rounded-lg bg-gold/0 transition-colors duration-200 group-hover:bg-gold/10" />
-              <Ic className="w-3.5 h-3.5 shrink-0 transition-transform duration-200 group-hover:scale-125 group-hover:-translate-y-0.5" />
-              {a.label}
-            </button>
-          );
-        })}
-        <span
-          className="absolute bottom-0 h-[2px] bg-gold transition-[left,width] duration-300 ease-out"
-          style={{ left: indicador.left, width: indicador.width }}
-        />
-      </nav>
 
       {/* Conteúdo — largura ampla, mas não a tela inteira */}
       <main className="relative z-10 max-w-7xl mx-auto px-4 py-4 sm:px-8 sm:py-6">
@@ -140,7 +155,8 @@ export default function Page() {
           return (
             <button
               key={a.id}
-              onClick={() => setAba(a.id)}
+              onClick={() => irPara(a.id)}
+              aria-current={ativo ? 'page' : undefined}
               className="relative flex-1 min-w-0 flex justify-center py-2 transition-transform active:scale-90"
             >
               <span className="relative flex flex-col items-center gap-0.5">
@@ -149,7 +165,7 @@ export default function Page() {
                     bg-gradient-to-br from-bordo to-bordo-soft" />
                 )}
                 <Ic className={`w-5 h-5 shrink-0 transition-transform ${ativo ? 'scale-[1.15] text-white' : 'text-muted'}`} />
-                <span className={`w-full px-0.5 text-[8px] font-semibold uppercase tracking-tight text-center truncate
+                <span className={`w-full px-0.5 text-[10px] font-semibold tracking-tight text-center truncate
                   ${ativo ? 'text-white' : 'text-muted'}`}>{a.label}</span>
               </span>
             </button>

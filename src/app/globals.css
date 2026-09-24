@@ -15,8 +15,22 @@
   --gold:        #cda963;
   --success:     #4caf7d;
   --danger:      #e0625a;
+
+  /* Mesmas cores em canais RGB: o Tailwind precisa delas pra gerar bg-bordo/15 etc. */
+  --bg-rgb:         22 17 19;
+  --surface-rgb:    31 24 27;
+  --surface-2-rgb:  40 31 35;
+  --border-rgb:     57 45 50;
+  --text-rgb:       241 235 232;
+  --muted-rgb:      155 139 133;
+  --bordo-rgb:      193 64 89;
+  --bordo-soft-rgb: 138 37 56;
+  --gold-rgb:       205 169 99;
+  --success-rgb:    76 175 125;
+  --danger-rgb:     224 98 90;
 }
 
+html { color-scheme: dark; } /* controles nativos (select, spinners, scrollbar) no escuro */
 html, body { background: var(--bg); color: var(--text); }
 body {
   font-family: var(--font-body), system-ui, sans-serif;
@@ -24,19 +38,21 @@ body {
   min-height: 100vh;
 }
 
+/* Vidro fosco (cards) — precisa de textura atrás pra ter efeito; o fundo de
+   faixas + brilho radial do Decor cumpre isso. Filete claro no topo vende a
+   "espessura" do vidro; fundo semiopaco garante leitura se o blur falhar. */
+.glass {
+  background: rgba(31, 24, 27, .55);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, .09);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10), 0 12px 32px rgba(0, 0, 0, .35);
+}
+
 /* Tipografia clean com hierarquia */
 h1, h2, h3, .font-display {
   font-family: var(--font-display), Georgia, serif;
   letter-spacing: -0.01em;
-}
-
-/* Marca "USP Debate" — só na abertura e no header fixo */
-.font-brand { font-family: var(--font-brand), Georgia, serif; }
-.text-brand-gradient {
-  background: linear-gradient(100deg, var(--gold), var(--bordo) 70%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 
 /* Animações */
@@ -86,6 +102,8 @@ h1, h2, h3, .font-display {
 
 @media (prefers-reduced-motion: reduce) {
   .decor-drift-a, .decor-drift-b, .decor-glow { animation: none; }
+  /* entradas dos painéis: aparecem direto, sem subir nem esmaecer */
+  .animate-rise, .animate-fade-up { animation: none; }
 }
 
 /* Nav inferior (mobile) — pill que "estoura" com uma mola atrás do item ativo,
@@ -138,12 +156,56 @@ h1, h2, h3, .font-display {
 }
 
 /* Inputs base */
-input[type=text], input[type=password] {
+input[type=text], input[type=password], input[type=tel] {
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text);
 }
-input::placeholder { color: var(--muted); }
+/* Campo de nota: sem as setinhas do navegador (digita-se o número direto) */
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input::placeholder, textarea::placeholder { color: var(--muted); transition: opacity .2s ease; }
+
+/* Campos vivos: halo bordô ao focar (outline acompanha o raio e não briga com
+   os ring-* de erro, que usam box-shadow), placeholder recua enquanto digita e
+   o rótulo acima acende. Só cor/opacidade animam. */
+input:not([type=checkbox], [type=radio], [type=file]), textarea, select {
+  caret-color: var(--bordo);
+  transition: border-color .2s ease, outline-color .2s ease;
+}
+input:not([type=checkbox], [type=radio], [type=file]):focus, textarea:focus, select:focus {
+  outline: 3px solid rgb(var(--bordo-rgb) / .22);
+  outline-offset: 0;
+}
+input:focus::placeholder, textarea:focus::placeholder { opacity: .5; }
+label { transition: color .2s ease; }
+label:has(+ :focus-within) { color: var(--text); }
+
+/* Cada card de vidro é uma camada própria (blur + animação de entrada), então a
+   lista do autocomplete ficava por baixo do card seguinte. O card com foco sobe. */
+.glass:focus-within { position: relative; z-index: 10; }
+
+/* Com o zoom liberado, o iOS dá zoom sozinho ao focar campo com fonte < 16px.
+   A regra só pega WebKit de iPhone/iPad (-webkit-touch-callout). */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea { font-size: max(16px, 1em) !important; }
+}
+
+/* Presença: cartões de chegada boiando em volta do microfone e o confete da
+   confirmação (uma rajada só, sai do centro do check). */
+@keyframes flutua { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.animate-flutua { animation: flutua 6s ease-in-out infinite; }
+@keyframes confete {
+  0%   { transform: translate(-50%, -50%) scale(.4); opacity: 1; }
+  70%  { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y) + 28px)) rotate(var(--r)); opacity: 0; }
+}
+.confete { position: absolute; left: 50%; top: 50%; width: 7px; height: 11px; border-radius: 2px;
+  animation: confete .95s cubic-bezier(.2,.7,.3,1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-flutua { animation: none; }
+  .confete { display: none; }
+}
 
 /* Easter egg do envio de formação */
 @keyframes olhoAbrir {

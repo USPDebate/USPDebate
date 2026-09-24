@@ -72,14 +72,16 @@ export default function AdminDrawEditor({ draw, onChange, juizesPool = [] }) {
                     ${POS_STYLE[pos.posicao] || 'bg-surface text-muted border-border'}`}>
                     {pos.posicao}
                   </span>
-                  <span className={`font-semibold ${slotCls(ehSel(si, pi, 'p1'))}`}
+                  <button type="button" aria-pressed={!!ehSel(si, pi, 'p1')}
+                    className={`text-left font-semibold ${slotCls(ehSel(si, pi, 'p1'))}`}
                     onClick={() => tocar(si, pi, 'p1')}>
                     {pos.p1}
-                  </span>
-                  <span className={`text-muted ${slotCls(ehSel(si, pi, 'p2'))}`}
+                  </button>
+                  <button type="button" aria-pressed={!!ehSel(si, pi, 'p2')}
+                    className={`text-left text-muted ${slotCls(ehSel(si, pi, 'p2'))}`}
                     onClick={() => tocar(si, pi, 'p2')}>
                     {p2 || '—'}
-                  </span>
+                  </button>
                 </div>
               );
             })}
@@ -95,7 +97,7 @@ export default function AdminDrawEditor({ draw, onChange, juizesPool = [] }) {
                     <span key={j} className="inline-flex items-center gap-1.5 bg-gold/20
                       border border-gold/40 text-gold rounded-full px-2.5 py-1 text-[11px] font-semibold">
                       {j}
-                      <button onClick={() => removeJuiz(sala.numero, j)} className="leading-none">×</button>
+                      <button onClick={() => removeJuiz(sala.numero, j)} aria-label={`Tirar ${j} da sala`} className="leading-none">×</button>
                     </span>
                   ))}
                 </div>
@@ -113,7 +115,7 @@ export default function AdminDrawEditor({ draw, onChange, juizesPool = [] }) {
               )}
               {panel.length === 0 && disponiveis.length === 0 && (
                 <div className="text-[11px] text-muted">
-                  Adicione juízes em &quot;Juízes gerais&quot; para alocá-los às salas.
+                  Adicione juízes em “Juízes gerais” para alocá-los às salas.
                 </div>
               )}
             </div>

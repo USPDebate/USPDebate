@@ -5,6 +5,8 @@ import Button from '@/components/ui/Button';
 import IconButton from '@/components/ui/IconButton';
 import LinkButton from '@/components/ui/LinkButton';
 import Alert from '@/components/ui/Alert';
+import FormSenha from '@/components/ui/FormSenha';
+import TextoComLinks from '@/components/ui/TextoComLinks';
 import Autocomplete from '@/components/ui/Autocomplete';
 import OlhoBigBrother from '@/components/ui/OlhoBigBrother';
 import Visualizador from '@/components/ui/Visualizador';
@@ -19,27 +21,13 @@ import {
 import { comprimirImagem } from '@/lib/imagem';
 import { mascararWhatsapp, normalizarWhatsapp, ocultarWhatsapp } from '@/lib/whatsapp';
 import { toast } from '@/lib/toast';
+import { fmtBR, fmtCurto, hojeISO } from '@/lib/datas';
 
 const SESSAO = 'uspd_trainee';
 const MAX_IMAGENS = 4;
 // Chance de o easter egg aparecer num envio bem-sucedido.
 const CHANCE_OLHO = 0.1;
 const DIAS = 30 * 24 * 60 * 60 * 1000;
-
-function fmtBR(iso) {
-  if (!iso) return '';
-  const [a, m, d] = iso.split('-');
-  return `${d}/${m}/${a}`;
-}
-function fmtCurto(iso) {
-  if (!iso) return '';
-  const [, m, d] = iso.split('-');
-  return `${d}/${m}`;
-}
-function hojeISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 export default function TraineeTab() {
   const [logado, setLogado] = useState(false);
@@ -105,7 +93,7 @@ export default function TraineeTab() {
     setEntrando(true);
     const ok = await verificarSenhaTrainee(senha);
     setEntrando(false);
-    if (!ok) { setAlertaLogin({ tipo: 'error', msg: 'Senha incorreta.' }); return; }
+    if (!ok) { setAlertaLogin({ tipo: 'error', msg: ok === null ? 'Sem conexão com o servidor. Confira a internet e tente de novo.' : 'Senha incorreta.' }); return; }
     setAlertaLogin(null);
     setLogado(true);
     salvarSessao(senha, nome);
@@ -218,15 +206,8 @@ export default function TraineeTab() {
           Entre com a senha de trainee para ver a formação da semana e enviar a sua.
         </p>
         {alertaLogin && <Alert tipo={alertaLogin.tipo} msg={alertaLogin.msg} />}
-        <input
-          type="password"
-          value={senha}
-          onChange={(e) => setSenha(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && entrar()}
-          placeholder="Senha de trainee"
-          className="w-full px-3.5 py-3 rounded-lg text-base outline-none focus:border-bordo mb-3"
-        />
-        <Button onClick={entrar} loading={entrando}>Entrar</Button>
+        <FormSenha usuario="trainee" rotulo="Senha de trainee"
+          value={senha} onChange={setSenha} onEntrar={entrar} loading={entrando} />
       </Card>
     );
   }
@@ -465,7 +446,7 @@ function Cartao({ d, e, hoje, sem, numero, daSemanaAtual, ocupado,
 
       <div className="text-[15px] font-semibold mb-1">{d.titulo}</div>
       {d.descricao && (
-        <p className="text-[13px] text-muted whitespace-pre-wrap mb-2">{d.descricao}</p>
+        <p className="text-[13px] text-muted whitespace-pre-wrap break-words mb-2"><TextoComLinks texto={d.descricao} /></p>
       )}
       <div className="text-[11px] text-muted mb-3">Prazo: {fmtBR(d.prazo)}</div>
 
@@ -507,13 +488,13 @@ function Cartao({ d, e, hoje, sem, numero, daSemanaAtual, ocupado,
             type="file"
             accept="image/*"
             multiple
-            className="hidden"
+            className="peer sr-only"
             disabled={ocupado || cheio}
             onChange={(ev) => onArquivos(d.id, ev.target.files)}
           />
           <label htmlFor={`arq-${d.id}`}
             className={`inline-flex items-center gap-2 text-[12px] rounded-lg px-3.5 py-2.5
-              border transition
+              border transition peer-focus-visible:ring-2 peer-focus-visible:ring-bordo
               ${ocupado || cheio
                 ? 'border-border text-muted cursor-not-allowed'
                 : 'border-bordo text-bordo hover:bg-[#c140591a] cursor-pointer'}`}>

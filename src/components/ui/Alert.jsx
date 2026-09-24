@@ -9,7 +9,7 @@ const STYLES = {
 export default function Alert({ tipo = 'info', msg }) {
   if (!msg) return null;
   return (
-    <div className={`flex items-start gap-2.5 px-4 py-3 mb-3.5 rounded-lg border text-[13px]
+    <div role={tipo === 'error' ? 'alert' : 'status'} className={`flex items-start gap-2.5 px-4 py-3 mb-3.5 rounded-lg border text-[13px]
       animate-fade-up ${STYLES[tipo] || STYLES.info}`}>
       <span>{msg}</span>
     </div>

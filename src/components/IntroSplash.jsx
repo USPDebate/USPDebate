@@ -24,7 +24,8 @@ export default function IntroSplash() {
     const hoje = new Date().toDateString();
     let vistoHoje = false;
     try { vistoHoje = localStorage.getItem(CHAVE_VISTO) === hoje; } catch { /* sem storage, tudo bem */ }
-    if (vistoHoje) { setFim(true); return; }
+    // Quem pediu menos movimento no sistema pula a abertura (ela é só animação).
+    if (vistoHoje || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setFim(true); return; }
 
     // só marca como "vista" quando a abertura de fato termina — em dev, o
     // StrictMode monta o efeito 2x (monta → limpa → monta), e gravar aqui
@@ -39,9 +40,16 @@ export default function IntroSplash() {
 
   if (fim) return null;
 
+  // Toque/clique pula a abertura (5 s é bastante pra quem só quer registrar presença).
+  function pular() {
+    try { localStorage.setItem(CHAVE_VISTO, new Date().toDateString()); } catch { /* sem storage, tudo bem */ }
+    setFim(true);
+  }
+
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-bg overflow-hidden"
+      onClick={pular}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-bg overflow-hidden cursor-pointer"
       style={saindo ? { animation: 'introOut .65s cubic-bezier(.6,0,.8,.4) forwards' } : undefined}
     >
       {/* brilho pulsante de fundo */}

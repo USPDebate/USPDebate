@@ -5,7 +5,9 @@ import Button from '@/components/ui/Button';
 import Alert from '@/components/ui/Alert';
 import Autocomplete from '@/components/ui/Autocomplete';
 import { IconShield, IconCheck } from '@/components/ui/Icons';
-import { listarPessoas, registrarMembroGestao } from '@/lib/supabase';
+import { listarPessoas, getTrainees, registrarMembroGestao } from '@/lib/supabase';
+
+const AVISO_TRAINEE = 'Você é trainee, ainda não pode se cadastrar como membro/gestão.';
 
 const PAPEIS = [
   { id: 'membro', label: 'Membro' },
@@ -14,6 +16,7 @@ const PAPEIS = [
 
 export default function CadastroMembroTab() {
   const [pessoas, setPessoas] = useState([]);
+  const [traineeIds, setTraineeIds] = useState(new Set());
   const [nome, setNome] = useState('');
   const [nomeOk, setNomeOk] = useState(false);
   const [modoNovo, setModoNovo] = useState(false);
@@ -22,9 +25,21 @@ export default function CadastroMembroTab() {
   const [alerta, setAlerta] = useState(null);
   const [feito, setFeito] = useState(null); // { nome, papel }
 
-  useEffect(() => { listarPessoas().then((p) => setPessoas(p || [])).catch(() => {}); }, []);
+  function carregarListas() {
+    listarPessoas().then((p) => setPessoas(p || [])).catch(() => {});
+    getTrainees().then((t) => setTraineeIds(new Set(t.map((x) => x.pessoaId)))).catch(() => {});
+  }
+
+  useEffect(carregarListas, []);
 
   const nomesPessoas = pessoas.map((p) => p.nome);
+
+  // Cruza o nome com quem já é trainee na temporada ativa, pra avisar antes
+  // de tentar enviar (o gatilho no banco também bloqueia, isso só adianta o aviso).
+  function pessoaEhTrainee(nomeStr) {
+    const p = pessoas.find((pp) => pp.nome === nomeStr);
+    return !!p && traineeIds.has(p.id);
+  }
 
   async function enviar() {
     const nomeFinal = nome.trim();
@@ -36,6 +51,10 @@ export default function CadastroMembroTab() {
       }
     } else if (!nomeOk) {
       setAlerta({ tipo: 'error', msg: 'Selecione seu nome da lista — ou clique em "não estou na lista".' });
+      return;
+    }
+    if (pessoaEhTrainee(nomeFinal)) {
+      setAlerta({ tipo: 'error', msg: AVISO_TRAINEE });
       return;
     }
 
@@ -54,7 +73,7 @@ export default function CadastroMembroTab() {
   function registrarOutro() {
     setFeito(null);
     setNome(''); setNomeOk(false); setModoNovo(false); setPapel('membro'); setAlerta(null);
-    listarPessoas().then((p) => setPessoas(p || [])).catch(() => {});
+    carregarListas();
   }
 
   if (feito) {
@@ -93,7 +112,7 @@ export default function CadastroMembroTab() {
               type="text"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              placeholder="Digite seu nome e sobrenome completos..."
+              placeholder="Digite seu nome e sobrenome completos…"
               className="w-full px-3.5 py-3 rounded-lg text-base outline-none focus:border-bordo"
             />
             <button
@@ -110,8 +129,11 @@ export default function CadastroMembroTab() {
             <Autocomplete
               value={nome}
               options={nomesPessoas}
-              placeholder="Comece a digitar e selecione seu nome..."
-              onChange={(v, escolhido) => { setNome(v); setNomeOk(escolhido); }}
+              placeholder="Comece a digitar e selecione seu nome…"
+              onChange={(v, escolhido) => {
+                setNome(v); setNomeOk(escolhido);
+                setAlerta(escolhido && pessoaEhTrainee(v) ? { tipo: 'error', msg: AVISO_TRAINEE } : null);
+              }}
             />
             <button
               type="button"
@@ -153,7 +175,7 @@ export default function CadastroMembroTab() {
       <Button onClick={enviar} loading={enviando} className="py-4 text-xs mt-1">
         <span className="inline-flex items-center justify-center gap-2">
           {!enviando && <IconCheck className="w-4 h-4" />}
-          {enviando ? 'Enviando...' : 'Confirmar cadastro'}
+          {enviando ? 'Enviando…' : 'Confirmar cadastro'}
         </span>
       </Button>
     </Card>

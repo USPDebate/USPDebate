@@ -18,7 +18,7 @@ export default function Toaster() {
   }), []);
 
   return (
-    <div className="fixed top-4 inset-x-0 z-[200] flex flex-col items-center gap-2
+    <div role="status" aria-live="polite" className="fixed top-4 inset-x-0 z-[200] flex flex-col items-center gap-2
       px-4 pointer-events-none">
       {lista.map((t) => (
         <div

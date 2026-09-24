@@ -6,12 +6,7 @@ import LineChart from '@/components/ui/LineChart';
 import { IconScale, IconClock, IconUsers } from '@/components/ui/Icons';
 import { getSpeaks } from '@/lib/supabase';
 import { calibrar, ranking, serieDebatedor, evolucaoClube, componentesConectados } from '@/lib/speaks-stats';
-
-function fmtData(iso) {
-  if (!iso) return '';
-  const [, m, d] = iso.split('-');
-  return `${d}/${m}`;
-}
+import { fmtCurto } from '@/lib/datas';
 
 export default function DesempenhoTab() {
   const [speaks, setSpeaks] = useState(null);
@@ -108,7 +103,7 @@ export default function DesempenhoTab() {
           series={[{
             nome: 'Clube',
             cor: 'var(--gold)',
-            pontos: clube.map((c) => ({ x: fmtData(c.data), y: c.media })),
+            pontos: clube.map((c) => ({ x: fmtCurto(c.data), y: c.media })),
           }]}
         />
       </Card>
@@ -120,7 +115,7 @@ export default function DesempenhoTab() {
           <Autocomplete
             value={nomeBusca}
             options={rank.map((d) => d.nome)}
-            placeholder="Escolha um debatedor..."
+            placeholder="Escolha um debatedor…"
             onChange={escolher}
           />
         </div>
@@ -145,12 +140,12 @@ export default function DesempenhoTab() {
                 {
                   nome: 'Nota crua',
                   cor: 'var(--muted)',
-                  pontos: serie.map((p) => ({ x: fmtData(p.data), y: p.cru })),
+                  pontos: serie.map((p) => ({ x: fmtCurto(p.data), y: p.cru })),
                 },
                 {
                   nome: 'Nota ajustada',
                   cor: 'var(--bordo)',
-                  pontos: serie.map((p) => ({ x: fmtData(p.data), y: p.ajustado })),
+                  pontos: serie.map((p) => ({ x: fmtCurto(p.data), y: p.ajustado })),
                 },
               ]}
             />
@@ -181,7 +176,7 @@ export default function DesempenhoTab() {
                   <div key={i}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-2
                       border border-border text-[12px]">
-                    <span className="w-12 text-muted">{fmtData(p.data)}</span>
+                    <span className="w-12 text-muted">{fmtCurto(p.data)}</span>
                     <span className="w-16 text-muted">{p.posicao} · S{p.sala}</span>
                     <span className="flex-1 text-muted truncate">{p.juiz || '—'}</span>
                     <span className="w-10 text-right text-muted">{p.cru.toFixed(0)}</span>

@@ -5,6 +5,7 @@ import Button from '@/components/ui/Button';
 import Alert from '@/components/ui/Alert';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import DataBR from '@/components/ui/DataBR';
+import TextoComLinks from '@/components/ui/TextoComLinks';
 import Visualizador from '@/components/ui/Visualizador';
 import WhatsappLink from '@/components/ui/WhatsappLink';
 import { IconPlus, IconCheck, IconImage, IconTrash, IconClock } from '@/components/ui/Icons';
@@ -14,21 +15,12 @@ import {
   getWhatsappTrainees,
 } from '@/lib/supabase';
 import { toast } from '@/lib/toast';
+import { fmtBR, fmtCurto, isoDe } from '@/lib/datas';
 
-function fmtBR(iso) {
-  if (!iso) return '';
-  const [a, m, d] = iso.split('-');
-  return `${d}/${m}/${a}`;
-}
-function fmtCurto(iso) {
-  if (!iso) return '';
-  const [, m, d] = iso.split('-');
-  return `${d}/${m}`;
-}
 function isoMenos(dias) {
   const d = new Date();
   d.setDate(d.getDate() - dias);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return isoDe(d);
 }
 
 export default function FormacoesArea({ senha }) {
@@ -117,7 +109,7 @@ export default function FormacoesArea({ senha }) {
     const n = envios.filter((e) => e.demanda_id === d.id).length;
     setConfirmar({
       titulo: 'Apagar esta formação?',
-      mensagem: `"${d.titulo}" e os ${n} envio(s) dela serão apagados. Não dá para desfazer.`,
+      mensagem: `“${d.titulo}” e os ${n} envio(s) dela serão apagados. Não dá para desfazer.`,
       acao: async () => {
         const res = await apagarDemanda({ senha, id: d.id });
         if (!res.ok) { toast('error', res.erro); return; }
@@ -183,7 +175,7 @@ export default function FormacoesArea({ senha }) {
     const primeiro = t.nome.split(' ')[0];
     if (e) return `Oi, ${primeiro}! Aqui é da diretoria da USP Debate.`;
     return `Oi, ${primeiro}! Aqui é da diretoria da USP Debate. Ainda não recebemos a sua `
-      + `formação "${demanda.titulo}" (prazo ${fmtBR(demanda.prazo)}). `
+      + `formação “${demanda.titulo}” (prazo ${fmtBR(demanda.prazo)}). `
       + 'Consegue enviar pela área do trainee do site?';
   };
 
@@ -322,8 +314,8 @@ export default function FormacoesArea({ senha }) {
                       <div className="min-w-0">
                         <div className="text-[14px] font-semibold">{d.titulo}</div>
                         {d.descricao && (
-                          <p className="text-[12px] text-muted whitespace-pre-wrap mt-0.5">
-                            {d.descricao}
+                          <p className="text-[12px] text-muted whitespace-pre-wrap break-words mt-0.5">
+                            <TextoComLinks texto={d.descricao} />
                           </p>
                         )}
                         <div className="text-[11px] text-muted mt-1">
@@ -345,7 +337,7 @@ export default function FormacoesArea({ senha }) {
                             hover:border-bordo hover:text-bordo transition">
                           Editar
                         </button>
-                        <button onClick={() => pedirApagarDemanda(d)} className="text-danger p-1.5">
+                        <button onClick={() => pedirApagarDemanda(d)} aria-label={`Apagar demanda ${d.titulo}`} title="Apagar demanda" className="text-danger p-1.5">
                           <IconTrash className="w-4 h-4" />
                         </button>
                       </div>

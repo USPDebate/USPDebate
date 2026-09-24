@@ -5,11 +5,12 @@ import Button from '@/components/ui/Button';
 import Alert from '@/components/ui/Alert';
 import Autocomplete from '@/components/ui/Autocomplete';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import FormSenha from '@/components/ui/FormSenha';
 import AdminDrawEditor from '@/components/AdminDrawEditor';
 import TraineesArea from '@/components/TraineesArea';
 import FormacoesArea from '@/components/FormacoesArea';
 import AltaGestaoArea from '@/components/AltaGestaoArea';
-import { IconLock, IconUsers, IconScale, IconLayers, IconPlus, IconTrash, IconCheck, IconImage, IconShield } from '@/components/ui/Icons';
+import { IconLock, IconUsers, IconScale, IconLayers, IconPlus, IconTrash, IconCheck } from '@/components/ui/Icons';
 import {
   verificarSenha, listarPresentesHoje, listarPessoas, getDrawHoje,
   gerarDraw as apiGerarDraw, salvarDraw, apagarPresenca, mesclarPessoas, apagarPessoa,
@@ -19,27 +20,35 @@ import {
 } from '@/lib/supabase';
 import { calibrar, analiseJuizes } from '@/lib/speaks-stats';
 import { toast } from '@/lib/toast';
+import { fmtBR, hojeISO } from '@/lib/datas';
 
 const chaveDuplas = () => 'duplasAdmin_' + new Date().toLocaleDateString('pt-BR');
 const chaveJuizes = () => 'juizes_' + new Date().toLocaleDateString('pt-BR');
 
-function fmtData(iso) {
-  if (!iso) return '';
-  const [a, m, d] = iso.split('-');
-  return `${d}/${m}/${a}`;
-}
-
-function hojeISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 const POSICOES = ['OG', 'OO', 'CG', 'CO'];
+
+// Menu admin: tiles monocromáticos; o único elemento visual forte é a arte de
+// cada um (renders 3D gerados no Gemini, public/admin/*.webp, todos no mesmo
+// grafite com filete bordô). Tamanho/posição da arte e do tile por tipo:
+// hero = "Draw de hoje" (2x2 no desktop), largo = linha de baixo (2x1).
+const TILE_SPAN = {
+  hero: 'col-span-2 min-h-[240px] lg:row-span-2 lg:min-h-0',
+  normal: 'min-h-[176px] lg:min-h-0',
+  largo: 'min-h-[176px] lg:col-span-2 lg:min-h-0',
+};
+// A arte é quadrada e dimensionada pela largura do tile; no tablet (sm–lg) os
+// tiles são largos e baixos, então ela encolhe pra não cobrir título e seta.
+const ARTE_POS = {
+  hero: 'w-[60%] -right-[4%] -bottom-[8%] sm:w-[40%] sm:-right-[2%] sm:-bottom-[40%] lg:w-[66%] lg:-right-[6%] lg:-bottom-[10%]',
+  normal: 'w-[78%] -right-[18%] -bottom-[22%] sm:w-[44%] sm:-right-[6%] sm:-bottom-[30%] lg:w-[60%] lg:-right-[12%] lg:-bottom-[26%]',
+  largo: 'w-[78%] -right-[18%] -bottom-[22%] sm:w-[44%] sm:-right-[6%] sm:-bottom-[30%] lg:w-[36%] lg:-right-[3%] lg:-bottom-[34%]',
+};
 
 export default function AdminTab() {
   const [logado, setLogado] = useState(false);
   const [senha, setSenha] = useState('');
   const [alertaLogin, setAlertaLogin] = useState(null);
+  const [entrando, setEntrando] = useState(false);
   const [area, setArea] = useState('menu'); // 'menu' | 'draw' | 'registros'
 
   const [presentes, setPresentes] = useState(null);
@@ -126,8 +135,10 @@ export default function AdminTab() {
 
   // ── Login ──
   async function login() {
+    setEntrando(true);
     const ok = await verificarSenha(senha);
-    if (!ok) { setAlertaLogin({ tipo: 'error', msg: 'Senha incorreta.' }); return; }
+    setEntrando(false);
+    if (!ok) { setAlertaLogin({ tipo: 'error', msg: ok === null ? 'Sem conexão com o servidor. Confira a internet e tente de novo.' : 'Senha incorreta.' }); return; }
     try {
       sessionStorage.setItem('uspd_admin', JSON.stringify({ senha, ts: Date.now() }));
     } catch (e) {}
@@ -160,7 +171,7 @@ export default function AdminTab() {
     if (!listaPresentes) return;
     const linhas = listaPresentes.map((p, i) =>
       `${i + 1}. ${p.nome}${p.tipo !== 'ps' ? ` (${p.tipo})` : ''}`);
-    const texto = `Presença — Treino ${fmtData(listaData)} (${listaPresentes.length} presentes)\n\n`
+    const texto = `Presença — Treino ${fmtBR(listaData)} (${listaPresentes.length} presentes)\n\n`
       + linhas.join('\n');
     navigator.clipboard.writeText(texto)
       .then(() => toast('success', 'Lista copiada! Cole onde quiser.'))
@@ -194,7 +205,7 @@ export default function AdminTab() {
     if (criarNovo) {
       const partes = nomeTxt.split(/\s+/).filter((x) => x.length >= 2);
       if (partes.length < 2) { toast('error', 'Digite nome e sobrenome completos.'); return; }
-      if (!window.confirm(`Cadastrar "${nomeTxt}" como nova pessoa e atribuir à linha?`)) return;
+      if (!window.confirm(`Cadastrar “${nomeTxt}” como nova pessoa e atribuir à linha?`)) return;
       const p = await acharOuCriarPessoa(nomeTxt);
       if (!p) { toast('error', 'Não consegui criar o cadastro.'); return; }
       pessoaId = p.id;
@@ -229,10 +240,10 @@ export default function AdminTab() {
     if (!pessoa) {
       const partes = nomeTxt.split(/\s+/).filter((x) => x.length >= 2);
       if (partes.length < 2) {
-        toast('error', `"${nomeTxt}" não está na lista. Para cadastrar, digite nome e sobrenome completos.`);
+        toast('error', `“${nomeTxt}” não está na lista. Para cadastrar, digite nome e sobrenome completos.`);
         return;
       }
-      if (!window.confirm(`Cadastrar "${nomeTxt}" como nova pessoa e adicionar o registro?`)) return;
+      if (!window.confirm(`Cadastrar “${nomeTxt}” como nova pessoa e adicionar o registro?`)) return;
       const novo = await acharOuCriarPessoa(nomeTxt);
       if (!novo) { toast('error', 'Não consegui criar o cadastro.'); return; }
       pessoa = novo;
@@ -278,7 +289,7 @@ export default function AdminTab() {
 
   async function apagarSpeaksFn(data) {
     if (!window.confirm(
-      `Apagar TODOS os speaker points do treino de ${fmtData(data)}? Não dá para desfazer.`)) return;
+      `Apagar TODOS os speaker points do treino de ${fmtBR(data)}? Não dá para desfazer.`)) return;
     const res = await apagarSpeaksData({ data, senha });
     if (res.ok) {
       toast('success', 'Speaker points do treino apagados.');
@@ -335,7 +346,7 @@ export default function AdminTab() {
   // ── Draw ──
   async function gerarDraw() {
     setGerando(true);
-    setAlertaDraw({ tipo: 'info', msg: 'Gerando draw, aguarde...' });
+    setAlertaDraw({ tipo: 'info', msg: 'Gerando draw, aguarde…' });
     const res = await apiGerarDraw({ juizes, duplasAdmin, senha });
     setGerando(false);
     if (res.ok) {
@@ -378,7 +389,7 @@ export default function AdminTab() {
     if (!pKeep || !pRem) { setAlertaMerge({ tipo: 'error', msg: 'Selecione as duas pessoas da lista.' }); return; }
     if (pKeep.id === pRem.id) { setAlertaMerge({ tipo: 'error', msg: 'Selecione pessoas diferentes.' }); return; }
     if (!window.confirm(`Mesclar cadastros:\n\nMANTER: ${pKeep.nome}\nREMOVER: ${pRem.nome}\n\n` +
-      `Todo o histórico de "${pRem.nome}" passa para "${pKeep.nome}" e o duplicado é apagado. Confirmar?`)) return;
+      `Todo o histórico de “${pRem.nome}” passa para “${pKeep.nome}” e o duplicado é apagado. Confirmar?`)) return;
     const res = await mesclarPessoas({ manter: pKeep.id, remover: pRem.id, senha });
     if (res.ok) {
       setAlertaMerge({ tipo: 'success', msg: 'Cadastros mesclados.' });
@@ -403,7 +414,7 @@ export default function AdminTab() {
     if (outro) {
       setAlertaRenome({
         tipo: 'error',
-        msg: `Já existe o cadastro "${outro.nome}". Para juntar os dois, use "Mesclar cadastros duplicados".`,
+        msg: `Já existe o cadastro “${outro.nome}”. Para juntar os dois, use “Mesclar cadastros duplicados”.`,
       });
       return;
     }
@@ -411,7 +422,7 @@ export default function AdminTab() {
       + 'Todo o histórico (presenças, speaks, trainees) continua com essa pessoa. Confirmar?')) return;
     const res = await renomearPessoa({ pessoaId: p.id, nome: novo, senha });
     if (res.ok) {
-      setAlertaRenome({ tipo: 'success', msg: `Agora chama "${novo}".` });
+      setAlertaRenome({ tipo: 'success', msg: `Agora chama “${novo}”.` });
       setRenomeAtual(''); setRenomeNovo('');
       listarPessoas().then((pp) => setPessoas(pp || []));
       carregarPresentes();
@@ -423,7 +434,7 @@ export default function AdminTab() {
   async function apagarPessoaFn() {
     const p = pessoas.find((x) => norm(x.nome) === norm(apagarNome));
     if (!p) { setAlertaApagar({ tipo: 'error', msg: 'Selecione a pessoa da lista.' }); return; }
-    if (!window.confirm(`Apagar "${p.nome}"?\n\nIsso remove a pessoa e TODO o histórico dela ` +
+    if (!window.confirm(`Apagar “${p.nome}”?\n\nIsso remove a pessoa e TODO o histórico dela ` +
       `(presenças e speaker points). Não dá para desfazer.`)) return;
     const res = await apagarPessoa({ pessoaId: p.id, senha });
     if (res.ok) {
@@ -440,105 +451,79 @@ export default function AdminTab() {
       <Card style={{ animationDelay: '.05s' }}>
         <SectionLabel icon={IconLock}>Área administrativa</SectionLabel>
         {alertaLogin && <Alert tipo={alertaLogin.tipo} msg={alertaLogin.msg} />}
-        <input
-          type="password"
-          value={senha}
-          onChange={(e) => setSenha(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && login()}
-          placeholder="Senha de administrador"
-          className="w-full px-3.5 py-3 rounded-lg text-base outline-none focus:border-bordo mb-3"
-        />
-        <Button onClick={login}>Entrar</Button>
+        <FormSenha usuario="admin" rotulo="Senha de administrador"
+          value={senha} onChange={setSenha} onEntrar={login} loading={entrando} />
       </Card>
     );
   }
 
   // ════════ Menu ════════
   if (area === 'menu') {
+    // A ordem é a do bento: o auto-placement do grid encaixa hero 2x2 + 4 normais
+    // à direita + 2 largos embaixo, sem precisar posicionar cada célula.
+    const itens = [
+      { tipo: 'hero', arte: 'draw', titulo: 'Draw de hoje', desc: 'Gerar, editar e publicar o draw; presença; duplas; juízes.', onClick: () => setArea('draw') },
+      { tipo: 'normal', arte: 'listas', titulo: 'Listas de presença', desc: 'Ver e copiar a lista de presença de cada treino.', onClick: abrirListas },
+      { tipo: 'normal', arte: 'registros', titulo: 'Registros e cadastros', desc: 'Corrigir, mesclar ou apagar cadastros e editar speaks.', onClick: abrirRegistros },
+      // A balança é larga e tem a base no pé da imagem: no recorte padrão só sobrava o travessão.
+      { tipo: 'normal', arte: 'juizes', pos: 'w-[78%] -right-[16%] -bottom-[12%] sm:w-[48%] sm:-right-[4%] sm:-bottom-[22%] lg:w-[62%] lg:-right-[9%] lg:-bottom-[10%]', titulo: 'Análise de juízes', desc: 'Desvio padrão, média e viés de cada juiz.', onClick: abrirAnalise },
+      { tipo: 'normal', arte: 'alta', titulo: 'Alta gestão', desc: 'Cadastro de membros e gestão, e presença nos treinos.', onClick: () => setArea('altaGestao') },
+      { tipo: 'largo', arte: 'trainees', titulo: 'Trainees', desc: 'Importar trainees, semanas, presença, formações e desempenho.', onClick: () => setArea('trainees') },
+      { tipo: 'largo', arte: 'formacoes', titulo: 'Formações', desc: 'Publicar a demanda da semana e verificar as imagens dos trainees.', onClick: () => setArea('formacoes') },
+    ];
     return (
-      <Card style={{ animationDelay: '.05s' }}>
+      <div style={{ animationDelay: '.05s' }} className="animate-rise">
         <SectionLabel icon={IconLock}>Painel administrativo</SectionLabel>
-        <p className="text-xs text-muted mb-4">O que você quer fazer?</p>
-        <div className="grid sm:grid-cols-2 gap-3">
-          <button
-            onClick={() => setArea('draw')}
-            className="text-left p-5 rounded-xl2 border border-border bg-surface-2
-              transition hover:border-bordo/60 hover:-translate-y-0.5"
-          >
-            <IconLayers className="w-6 h-6 text-bordo mb-2" />
-            <div className="text-[13px] font-semibold">Draw de hoje</div>
-            <div className="text-[11px] text-muted mt-1">
-              Gerar, editar e publicar o draw; presença; duplas; juízes.
-            </div>
-          </button>
-          <button
-            onClick={abrirRegistros}
-            className="text-left p-5 rounded-xl2 border border-border bg-surface-2
-              transition hover:border-bordo/60 hover:-translate-y-0.5"
-          >
-            <IconUsers className="w-6 h-6 text-bordo mb-2" />
-            <div className="text-[13px] font-semibold">Registros e cadastros</div>
-            <div className="text-[11px] text-muted mt-1">
-              Corrigir nomes, mesclar duplicados, apagar pessoas e editar speaks.
-            </div>
-          </button>
-          <button
-            onClick={abrirAnalise}
-            className="text-left p-5 rounded-xl2 border border-border bg-surface-2
-              transition hover:border-bordo/60 hover:-translate-y-0.5"
-          >
-            <IconScale className="w-6 h-6 text-bordo mb-2" />
-            <div className="text-[13px] font-semibold">Análise de juízes</div>
-            <div className="text-[11px] text-muted mt-1">
-              Desvio padrão, média e viés de cada juiz.
-            </div>
-          </button>
-          <button
-            onClick={abrirListas}
-            className="text-left p-5 rounded-xl2 border border-border bg-surface-2
-              transition hover:border-bordo/60 hover:-translate-y-0.5"
-          >
-            <IconUsers className="w-6 h-6 text-bordo mb-2" />
-            <div className="text-[13px] font-semibold">Listas de presença</div>
-            <div className="text-[11px] text-muted mt-1">
-              Ver e copiar a lista de presença de cada treino.
-            </div>
-          </button>
-          <button
-            onClick={() => setArea('trainees')}
-            className="text-left p-5 rounded-xl2 border border-border bg-surface-2
-              transition hover:border-bordo/60 hover:-translate-y-0.5"
-          >
-            <IconUsers className="w-6 h-6 text-bordo mb-2" />
-            <div className="text-[13px] font-semibold">Trainees</div>
-            <div className="text-[11px] text-muted mt-1">
-              Importar trainees, semanas, presença, formações e desempenho.
-            </div>
-          </button>
-          <button
-            onClick={() => setArea('formacoes')}
-            className="text-left p-5 rounded-xl2 border border-border bg-surface-2
-              transition hover:border-bordo/60 hover:-translate-y-0.5"
-          >
-            <IconImage className="w-6 h-6 text-bordo mb-2" />
-            <div className="text-[13px] font-semibold">Formações</div>
-            <div className="text-[11px] text-muted mt-1">
-              Publicar a demanda da semana e verificar as imagens enviadas pelos trainees.
-            </div>
-          </button>
-          <button
-            onClick={() => setArea('altaGestao')}
-            className="text-left p-5 rounded-xl2 border border-border bg-surface-2
-              transition hover:border-bordo/60 hover:-translate-y-0.5"
-          >
-            <IconShield className="w-6 h-6 text-bordo mb-2" />
-            <div className="text-[13px] font-semibold">Alta gestão</div>
-            <div className="text-[11px] text-muted mt-1">
-              Cadastro de membros e gestão, e acompanhamento de presença nos treinos.
-            </div>
-          </button>
+        <p className="text-xs text-muted mb-5">O que você quer fazer?</p>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:auto-rows-[200px] lg:gap-4">
+          {itens.map(({ tipo, arte, pos, titulo, desc, onClick }, i) => (
+            <button
+              key={titulo}
+              onClick={onClick}
+              style={{ animationDelay: `${0.08 + i * 0.05}s` }}
+              className={`group relative overflow-hidden flex flex-col text-left rounded-xl2 p-5 lg:p-6 animate-rise
+                bg-[linear-gradient(180deg,rgba(42,33,37,.70)_0%,rgba(24,19,21,.82)_100%)]
+                backdrop-blur-[16px] ring-1 ring-inset ring-white/[0.07]
+                shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_10px_30px_-12px_rgba(0,0,0,.6)]
+                transition-[box-shadow,transform] duration-300 hover:ring-[rgba(193,64,89,.5)] active:scale-[0.99]
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bordo
+                ${TILE_SPAN[tipo]}`}
+            >
+              <img
+                src={`admin/${arte}.webp`}
+                alt=""
+                aria-hidden="true"
+                decoding="async"
+                className={`pointer-events-none select-none absolute aspect-square mix-blend-lighten
+                  [mask-image:radial-gradient(closest-side,#000_78%,transparent_100%)]
+                  transition-transform duration-500 ease-[cubic-bezier(.2,.7,.2,1)]
+                  motion-safe:group-hover:scale-[1.04] motion-safe:group-hover:-translate-y-1
+                  ${pos || ARTE_POS[tipo]}`}
+              />
+              <span aria-hidden="true"
+                className="absolute top-5 right-5 lg:top-6 lg:right-6 z-10 text-sm text-muted/70
+                  transition duration-300 group-hover:text-text motion-safe:group-hover:translate-x-0.5">
+                →
+              </span>
+              <div className="relative z-10 pr-8">
+                <h3 className={`font-display font-semibold tracking-tight text-text
+                  ${tipo === 'hero' ? 'text-xl lg:text-[26px] leading-tight' : 'text-[15px] leading-snug'}`}>
+                  {titulo}
+                </h3>
+                <p className={`mt-1.5 text-[12.5px] leading-relaxed text-muted text-pretty ${{
+                  hero: 'line-clamp-3 max-w-[62%] lg:max-w-[48%] lg:text-sm',
+                  // celular: só título. Entre lg e xl o tile pequeno tem ~250px e a
+                  // descrição só truncaria, então some ali também.
+                  normal: 'hidden sm:line-clamp-3 sm:max-w-[60%] lg:hidden xl:line-clamp-3 xl:max-w-[64%]',
+                  largo: 'hidden sm:line-clamp-3 sm:max-w-[60%] lg:line-clamp-2',
+                }[tipo]}`}>
+                  {desc}
+                </p>
+              </div>
+            </button>
+          ))}
         </div>
-      </Card>
+      </div>
     );
   }
 
@@ -581,7 +566,7 @@ export default function AdminTab() {
                   <span className="flex-1 text-[13px] font-semibold">{d.p1}</span>
                   <span className="text-muted text-xs">↔</span>
                   <span className="flex-1 text-[13px] font-semibold">{d.p2}</span>
-                  <button onClick={() => removerDupla(i)} className="text-danger p-1">
+                  <button onClick={() => removerDupla(i)} aria-label={`Remover dupla ${d.p1} e ${d.p2}`} title="Remover dupla" className="text-danger p-1">
                     <IconTrash className="w-4 h-4" />
                   </button>
                 </div>
@@ -635,7 +620,7 @@ export default function AdminTab() {
             </div>
           )}
           <div className="mb-2">
-            <Autocomplete value={inpJuiz} options={nomesPessoas} placeholder="Nome do juiz..." onChange={(v) => setInpJuiz(v)} />
+            <Autocomplete value={inpJuiz} options={nomesPessoas} placeholder="Nome do juiz…" onChange={(v) => setInpJuiz(v)} />
           </div>
           <Button variant="ghost" onClick={adicionarJuiz}>
             <span className="inline-flex items-center gap-2 justify-center"><IconPlus className="w-4 h-4" />Adicionar juiz</span>
@@ -710,7 +695,7 @@ export default function AdminTab() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] text-muted">{p.hora}</span>
-                      <button onClick={() => removerPresenca(p)}
+                      <button onClick={() => removerPresenca(p)} aria-label={`Remover presença de ${p.nome}`} title="Remover presença"
                         className="text-danger border border-danger/40 rounded p-1.5">
                         <IconTrash className="w-3.5 h-3.5" />
                       </button>
@@ -832,7 +817,7 @@ export default function AdminTab() {
                       ? 'bg-gradient-to-br from-bordo to-bordo-soft text-white border-bordo'
                       : 'bg-surface-2 text-muted border-border hover:border-bordo/60'}`}
                 >
-                  {fmtData(d)}
+                  {fmtBR(d)}
                 </button>
               ))}
             </div>
@@ -849,7 +834,7 @@ export default function AdminTab() {
                 </span>
               )}
             >
-              Treino {fmtData(listaData)}
+              Treino {fmtBR(listaData)}
             </SectionLabel>
             {listaPresentes === null && <div className="skeleton h-20 rounded-xl2" />}
             {listaPresentes && listaPresentes.length === 0 && (
@@ -898,7 +883,7 @@ export default function AdminTab() {
               Cadastro atual
             </label>
             <Autocomplete value={renomeAtual} options={nomesPessoas}
-              placeholder="Quem você quer renomear..."
+              placeholder="Quem você quer renomear…"
               onChange={(v) => { setRenomeAtual(v); setAlertaRenome(null); }} />
           </div>
           <div>
@@ -909,7 +894,7 @@ export default function AdminTab() {
               type="text"
               value={renomeNovo}
               onChange={(e) => { setRenomeNovo(e.target.value); setAlertaRenome(null); }}
-              placeholder="Nome e sobrenome corretos..."
+              placeholder="Nome e sobrenome corretos…"
               className="w-full px-3.5 py-3 rounded-lg text-base outline-none focus:border-bordo"
             />
           </div>
@@ -937,12 +922,12 @@ export default function AdminTab() {
         <div className="grid sm:grid-cols-2 gap-2 mb-2">
           <div>
             <label className="block text-[10px] uppercase tracking-[0.15em] text-muted mb-1.5">Manter</label>
-            <Autocomplete value={mergeKeep} options={nomesPessoas} placeholder="Cadastro a manter..."
+            <Autocomplete value={mergeKeep} options={nomesPessoas} placeholder="Cadastro a manter…"
               onChange={(v) => setMergeKeep(v)} />
           </div>
           <div>
             <label className="block text-[10px] uppercase tracking-[0.15em] text-muted mb-1.5">Remover</label>
-            <Autocomplete value={mergeRemove} options={nomesPessoas} placeholder="Cadastro duplicado..."
+            <Autocomplete value={mergeRemove} options={nomesPessoas} placeholder="Cadastro duplicado…"
               onChange={(v) => setMergeRemove(v)} />
           </div>
         </div>
@@ -957,7 +942,7 @@ export default function AdminTab() {
           (presenças e speaker points). Use para limpar cadastros errados. Não dá para desfazer.
         </p>
         <div className="mb-2">
-          <Autocomplete value={apagarNome} options={nomesPessoas} placeholder="Pessoa a apagar..."
+          <Autocomplete value={apagarNome} options={nomesPessoas} placeholder="Pessoa a apagar…"
             onChange={(v) => setApagarNome(v)} />
         </div>
         <Button variant="danger" onClick={apagarPessoaFn}>Apagar pessoa</Button>
@@ -981,7 +966,7 @@ export default function AdminTab() {
                   ${regData === d
                     ? 'bg-gradient-to-br from-bordo to-bordo-soft text-white border-bordo'
                     : 'bg-surface-2 text-muted border-border hover:border-bordo/60'}`}>
-                {fmtData(d)}
+                {fmtBR(d)}
               </button>
             ))}
           </div>
@@ -1014,7 +999,7 @@ export default function AdminTab() {
                           <div className="flex flex-col gap-1">
                             <Autocomplete
                               value={regEditNomeTxt} options={nomesPessoas}
-                              placeholder="Trocar nome..."
+                              placeholder="Trocar nome…"
                               onChange={(v, esc) => { setRegEditNomeTxt(v); setRegEditNomeOk(esc); }}
                             />
                             <div className="flex gap-1.5 flex-wrap">
@@ -1046,7 +1031,7 @@ export default function AdminTab() {
                           className="w-full px-2 py-1.5 rounded-lg text-center text-[13px] font-bold
                             bg-[#ece4df] text-[#1a1212] border border-border outline-none focus:border-bordo"
                         />
-                        <button onClick={() => apagarLinha(l)} className="text-danger p-1">
+                        <button onClick={() => apagarLinha(l)} aria-label={`Apagar registro de ${l.nome}`} title="Apagar registro" className="text-danger p-1">
                           <IconTrash className="w-4 h-4" />
                         </button>
                       </div>
@@ -1063,7 +1048,7 @@ export default function AdminTab() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-[1fr_70px_80px_70px] gap-2 mb-2">
                 <Autocomplete value={novoReg.nome} options={nomesPessoas}
-                  placeholder="Pessoa..."
+                  placeholder="Pessoa…"
                   onChange={(v) => setNovoReg({ ...novoReg, nome: v })} />
                 <input type="number" min={1} placeholder="Sala" value={novoReg.sala}
                   onChange={(e) => setNovoReg({ ...novoReg, sala: e.target.value })}
@@ -1105,7 +1090,7 @@ export default function AdminTab() {
                       Juiz que preencheu o ballot *
                     </label>
                     <Autocomplete value={novoReg.juiz} options={nomesPessoas}
-                      placeholder="Selecione o juiz da lista..."
+                      placeholder="Selecione o juiz da lista…"
                       onChange={(v) => setNovoReg({ ...novoReg, juiz: v })} />
                     <p className="text-[10px] text-muted mt-1">
                       A Sala {salaN} ainda não tem registros nesse treino — selecione o juiz manualmente.
@@ -1127,7 +1112,7 @@ export default function AdminTab() {
                 className="text-[11px] text-danger border border-danger/40 rounded-lg px-3 py-1.5
                   hover:bg-danger/10 transition whitespace-nowrap"
               >
-                Apagar tudo de {fmtData(regData)}
+                Apagar tudo de {fmtBR(regData)}
               </button>
             </div>
           </div>
