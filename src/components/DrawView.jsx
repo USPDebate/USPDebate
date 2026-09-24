@@ -12,7 +12,10 @@ const BANCADA = {
 };
 
 // eu: nome de quem está olhando (card "Onde eu estou?"), pra destacar a bancada/mesa.
-export default function DrawView({ draw, eu = '' }) {
+// speaks (Histórico): notas do dia [{ nome, sala, posicao, speaks }]. Numa bancada com
+// nota, os nomes vêm das próprias notas — se alguém foi trocado depois do draw, a nota
+// continua com quem de fato debateu.
+export default function DrawView({ draw, eu = '', speaks = null }) {
   if (!draw || !draw.salas || draw.salas.length === 0) {
     return <p className="text-muted py-8 text-[15px]">O draw de hoje ainda não saiu.</p>;
   }
@@ -22,7 +25,8 @@ export default function DrawView({ draw, eu = '' }) {
   return (
     // Juízes gerais entram na mesma grade: com nº ímpar de salas ocupam a vaga ao
     // lado da última; com nº par, a linha inteira.
-    <div className="grid gap-4 sm:gap-5 lg:grid-cols-2">
+    // Uma sala só não ocupa meia coluna (os nomes quebravam): fica numa largura confortável.
+    <div className={`grid gap-4 sm:gap-5 ${draw.salas.length > 1 ? 'lg:grid-cols-2' : 'max-w-2xl'}`}>
       {draw.salas.map((sala, idx) => {
         const juizes = panelSala(sala);
         const porPos = Object.fromEntries(sala.posicoes.map((p) => [p.posicao, p]));
@@ -57,15 +61,33 @@ export default function DrawView({ draw, eu = '' }) {
               {['OG', 'OO', 'CG', 'CO'].map((sigla) => {
                 const pos = porPos[sigla];
                 const p2 = pos && !semPar(pos.p2) ? pos.p2 : null;
-                const aqui = !!pos && (souEu(pos.p1) || souEu(p2));
+                const notas = (speaks || []).filter((s) => Number(s.sala) === Number(sala.numero) && s.posicao === sigla);
+                const aqui = notas.length ? notas.some((s) => souEu(s.nome)) : !!pos && (souEu(pos.p1) || souEu(p2));
+                const direita = sigla === 'OO' || sigla === 'CO';
                 return (
                   <div key={sigla}
                     className={`rounded-xl px-3 py-2.5 ${BANCADA[sigla]}
                       ${aqui ? 'bg-white/[0.08] ring-2 ring-inset ring-text' : 'bg-white/[0.03]'}`}>
-                    <p className={`text-[13px] font-bold tracking-wide ${POS_LETRA[sigla]}`}>
-                      {sigla}{aqui && <span className="font-normal tracking-normal text-text"> · você</span>}
+                    <p className={`flex items-baseline gap-2 ${direita ? 'flex-row-reverse' : ''}`}>
+                      <span className={`text-[13px] font-bold tracking-wide ${POS_LETRA[sigla]}`}>
+                        {sigla}{aqui && <span className="font-normal tracking-normal text-text"> · você</span>}
+                      </span>
+                      {notas.length > 0 && (
+                        <span className={`${direita ? 'mr-auto' : 'ml-auto'} text-[13px] text-muted tabular-nums`}>
+                          {notas.reduce((t, s) => t + s.speaks, 0)} <span className="sr-only">{notas.length > 1 ? 'pontos da dupla' : 'pontos'}</span>
+                        </span>
+                      )}
                     </p>
-                    {pos ? (
+                    {notas.length > 0 ? (
+                      <ul className="mt-0.5 text-[13px] sm:text-[15px] leading-snug text-text">
+                        {notas.map((s) => (
+                          <li key={s.id ?? s.nome} className={`flex items-baseline gap-2 ${direita ? 'flex-row-reverse' : ''}`}>
+                            <span className="min-w-0 break-words">{s.nome}</span>
+                            <span className={`${direita ? 'mr-auto' : 'ml-auto'} font-semibold tabular-nums`}>{s.speaks}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : pos ? (
                       <p className="mt-0.5 text-[13px] sm:text-[15px] leading-snug text-text break-words">
                         <span className="block">{pos.p1}</span>
                         {p2 ? <span className="block">{p2}</span> : <span className="block text-muted">sem dupla</span>}

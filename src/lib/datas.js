@@ -14,6 +14,12 @@ export function fmtBR(iso) {
   return `${d}/${m}/${a}`;
 }
 
+// 'aaaa-mm-dd' → Date à meia-noite local (pra Intl: dia da semana, nome do mês).
+export function dataLocal(iso) {
+  const [a, m, d] = iso.split('-').map(Number);
+  return new Date(a, m - 1, d);
+}
+
 export function fmtCurto(iso) {
   if (!iso) return '';
   const [, m, d] = iso.split('-');

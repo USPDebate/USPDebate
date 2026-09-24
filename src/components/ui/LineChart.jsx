@@ -2,7 +2,9 @@ import { useId } from 'react';
 
 // Gráfico de linha em SVG puro — sem biblioteca, leve, tema escuro.
 // series: [{ nome, cor, pontos: [{ x: 'rótulo', y: número }] }]
-export default function LineChart({ series = [], altura = 200 }) {
+// largura: largura do viewBox — use perto da largura real na tela pra o texto dos eixos
+// não encolher (o SVG escala tudo junto).
+export default function LineChart({ series = [], altura = 200, largura = 620 }) {
   const uid = useId();
   const todos = series.flatMap((s) => s.pontos);
   if (todos.length === 0) {
@@ -18,7 +20,7 @@ export default function LineChart({ series = [], altura = 200 }) {
   maxY += folga;
 
   const n = Math.max(...series.map((s) => s.pontos.length), 1);
-  const W = 620, H = altura;
+  const W = largura, H = altura;
   const padL = 40, padR = 14, padT = 14, padB = 28;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
