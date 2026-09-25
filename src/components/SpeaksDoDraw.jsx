@@ -187,7 +187,7 @@ export default function SpeaksDoDraw({ onManual }) {
             <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 sm:gap-x-6">
               <p className="text-[13px] text-muted">Governo</p>
               <p className="text-[13px] text-muted text-right">Oposição</p>
-              {PLANTA.map((pos) => {
+              {(sala.incompleta || debs.some((d) => d.posicao === 'CG' || d.posicao === 'CO') ? PLANTA : ['OG', 'OO']).map((pos) => {
                 const ds = debs.filter((d) => d.posicao === pos);
                 const opo = pos === 'OO' || pos === 'CO';
                 return (

@@ -58,7 +58,7 @@ export default function DrawView({ draw, eu = '', speaks = null }) {
             <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 sm:gap-x-6">
               <p className="text-[13px] text-muted">Governo</p>
               <p className="text-[13px] text-muted text-right">Oposição</p>
-              {['OG', 'OO', 'CG', 'CO'].map((sigla) => {
+              {(sala.incompleta || porPos.CG || porPos.CO ? ['OG', 'OO', 'CG', 'CO'] : ['OG', 'OO']).map((sigla) => {
                 const pos = porPos[sigla];
                 const p2 = pos && !semPar(pos.p2) ? pos.p2 : null;
                 const notas = (speaks || []).filter((s) => Number(s.sala) === Number(sala.numero) && s.posicao === sigla);

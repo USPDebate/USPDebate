@@ -13,12 +13,12 @@ import { POS_LETRA, POS_BANCADA } from '@/lib/draw';
 import { POCO } from '@/lib/estilos';
 import { toast } from '@/lib/toast';
 
-const POSICOES = ['OG', 'OO', 'CG', 'CO'];
-const KEYS = POSICOES.flatMap((p) => [p + '-1', p + '-2']);
+const TODAS = ['OG', 'OO', 'CG', 'CO'];
+const chaves = (posicoes) => posicoes.flatMap((p) => [p + '-1', p + '-2']);
 
 function novoDados() {
   const o = {};
-  KEYS.forEach((k) => { o[k] = { nome: '', novo: false, ok: false, speak: '' }; });
+  chaves(TODAS).forEach((k) => { o[k] = { nome: '', novo: false, ok: false, speak: '' }; });
   return o;
 }
 
@@ -34,6 +34,10 @@ export default function SpeaksManual() {
   const [erros, setErros] = useState({});            // { [key]: 'mensagem' }
   const [juizErro, setJuizErro] = useState(null);
   const [iron, setIron] = useState({ OG: false, OO: false, CG: false, CO: false });
+  // Treino só de primeiras bancadas: a sala tem apenas OG e OO.
+  const [soAbertura, setSoAbertura] = useState(false);
+  const POSICOES = soAbertura ? ['OG', 'OO'] : TODAS;
+  const KEYS = chaves(POSICOES);
 
   useEffect(() => {
     listarPessoas().then((p) => setPessoas(p || [])).catch(() => {});
@@ -278,6 +282,15 @@ export default function SpeaksManual() {
         Marque &quot;Iron&quot; quando uma pessoa faz as duas falas da equipe.
       </p>
 
+      <div className="mt-6">
+        <Escolha legenda="Formato" name="manual-formato" value={soAbertura ? 'abertura' : 'completa'}
+          onChange={(v) => setSoAbertura(v === 'abertura')}
+          opcoes={[
+            { valor: 'completa', rotulo: 'Sala completa', detalhe: 'OG, OO, CG e CO' },
+            { valor: 'abertura', rotulo: 'Só primeiras bancadas', detalhe: 'OG e OO' },
+          ]} />
+      </div>
+
       {/* Juiz */}
       <div data-erro={juizErro ? 'true' : undefined} className="mt-6 scroll-mt-24 sm:max-w-md">
         <label htmlFor="manual-juiz" className="block text-[15px] font-medium text-text mb-2">Seu nome</label>
@@ -312,7 +325,7 @@ export default function SpeaksManual() {
           opcoes={[1, 2, 3, 4, 5, 6, 7, 8].map((n) => ({ valor: String(n), rotulo: String(n) }))} />
       </div>
 
-      {/* 4 equipes na planta da sala (igual à aba Draw): Governo à esquerda, Oposição à
+      {/* Equipes na planta da sala (igual à aba Draw): Governo à esquerda, Oposição à
           direita, abertura na frente. No celular vira uma coluna na ordem OG, OO, CG, CO. */}
       <ul className="mt-6 grid gap-3 sm:grid-cols-2 sm:gap-x-6">
         <li aria-hidden="true" className="hidden sm:block text-[13px] text-muted -mb-1">Governo</li>
