@@ -191,7 +191,7 @@ label:has(+ :focus-within) { color: var(--text); }
   input, select, textarea { font-size: max(16px, 1em) !important; }
 }
 
-/* Presença: cartões de chegada boiando em volta do microfone e o confete da
+/* Presença: cartões de chegada boiando sobre o vídeo de fundo e o confete da
    confirmação (uma rajada só, sai do centro do check). */
 @keyframes flutua { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 .animate-flutua { animation: flutua 6s ease-in-out infinite; }

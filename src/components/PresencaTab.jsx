@@ -71,12 +71,12 @@ function fraseSala(lista) {
 }
 
 const FAZ = { ps: 'vai debater', juiz: 'vai julgar', observador: 'vai assistir', visitante: 'vai assistir' };
-// Onde cada cartão de chegada flutua em volta do microfone (desktop).
+// Onde cada cartão de chegada flutua sobre o vídeo de fundo (desktop).
 const POS_CARTAO = ['left-0 top-3', 'right-0 top-[38%]', 'left-8 bottom-2'];
 
 // Topo da aba (ref.: hero escuro do Resend + cartões flutuantes do Flighty): o
-// microfone girando (vídeo do Gemini, fundo já no tom da página) e as últimas
-// chegadas flutuando em volta. É decorativo (a lista de verdade está abaixo), tem
+// plenário de fundo (vídeo do Higgsfield, a foto é o poster) e as últimas
+// chegadas flutuando por cima. É decorativo (a lista de verdade está abaixo), tem
 // botão de pausar e, com "reduzir movimento", começa parado.
 function TopoTreino({ presentes }) {
   const [hoje, setHoje] = useState('');
@@ -91,6 +91,7 @@ function TopoTreino({ presentes }) {
   useEffect(() => {
     const v = refVideo.current;
     if (!v) return;
+    v.playbackRate = 0.5; // a aproximação da câmera em velocidade normal ficava apressada
     if (parado) v.pause(); else v.play().catch(() => {});
   }, [parado]);
 
@@ -107,7 +108,12 @@ function TopoTreino({ presentes }) {
   // centralizada, formulário + lista mais largos embaixo.
   return (
     <section aria-labelledby="treino-titulo" className="glass relative overflow-hidden rounded-xl2 animate-rise lg:w-[78%] lg:mx-auto">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 py-4 sm:px-8 sm:py-6">
+      <video ref={refVideo} src="presenca/hero.mp4" poster="presenca/hero.webp" aria-hidden="true"
+        muted loop playsInline preload="metadata" width="1280" height="720"
+        className="absolute inset-0 w-full h-full object-cover object-[70%_50%]" />
+      {/* escurece a esquerda (texto); no celular os números cobrem o cartão todo, então escurece tudo */}
+      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-bg via-bg/80 to-bg/50 sm:via-bg/60 sm:to-transparent" />
+      <div className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 py-6 sm:px-8 sm:py-10">
         <div className="min-w-0">
           {/* no celular a data já está no cabeçalho do site */}
           <p className="hidden sm:block text-sm text-muted first-letter:uppercase min-h-[1.25rem]">{hoje}</p>
@@ -130,11 +136,7 @@ function TopoTreino({ presentes }) {
           </p>
         </div>
 
-        <div aria-hidden="true" className="relative w-[64px] h-[124px] sm:w-[440px] sm:h-[250px]">
-          <video ref={refVideo} src="presenca/microfone.mp4" poster="presenca/microfone.webp"
-            muted loop playsInline preload="metadata" width="360" height="640"
-            className="absolute left-1/2 top-1/2 h-[118%] w-auto max-w-none -translate-x-1/2 -translate-y-1/2
-              [mask-image:radial-gradient(closest-side,#000_62%,transparent_100%)]" />
+        <div aria-hidden="true" className="relative hidden sm:block sm:w-[440px] sm:h-[250px]">
           {ultimos.map((p, i) => (
             <div key={p.presencaId}
               className={`hidden sm:block absolute ${POS_CARTAO[i]} w-[178px] animate-fade-up`}
@@ -158,7 +160,7 @@ function TopoTreino({ presentes }) {
       </div>
 
       <button type="button" onClick={() => setParado((v) => !v)} aria-pressed={parado}
-        aria-label={parado ? 'Retomar animação do microfone' : 'Pausar animação do microfone'}
+        aria-label={parado ? 'Retomar vídeo de fundo' : 'Pausar vídeo de fundo'}
         className="absolute bottom-2.5 right-2.5 grid place-items-center w-8 h-8 rounded-full bg-black/30 ring-1 ring-white/10
           text-muted hover:text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
         {parado

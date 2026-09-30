@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useLayoutEffect } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 
 const CHAVE_VISTO = 'uspd_intro_visto';
 // useLayoutEffect roda antes do primeiro paint — evita o flash de "mostra
@@ -7,8 +7,10 @@ const CHAVE_VISTO = 'uspd_intro_visto';
 // useEffect (useLayoutEffect não existe fora do browser).
 const useEfeitoDeLayout = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
-// Animação de abertura: a logo da USP Debate surge, segura um instante
-// e a tela inteira sai (zoom + fade) revelando o app. Só toca uma vez por
+// Animação de abertura: um vídeo 16:9 (public/intro.mp4, Veo no Gemini, invertido no ffmpeg;
+// fundo no tom da página) em que uma linha se desenha e vira o logo; ao terminar,
+// a tela inteira sai (zoom + fade) revelando o app. Se o vídeo não carregar ou o navegador barrar o autoplay,
+// cai na animação antiga: a logo surge e segura um instante. Só toca uma vez por
 // dia (guarda a data no localStorage) — quem reabre o app várias vezes
 // durante um treino não vê de novo a cada troca de aba.
 //
@@ -19,6 +21,8 @@ export default function IntroSplash() {
   const [saindo, setSaindo] = useState(false);
   const [fim, setFim] = useState(false);
   const [semLogo, setSemLogo] = useState(false);
+  const [semVideo, setSemVideo] = useState(false);
+  const refVideo = useRef(null);
 
   useEfeitoDeLayout(() => {
     const hoje = new Date().toDateString();
@@ -30,13 +34,27 @@ export default function IntroSplash() {
     // só marca como "vista" quando a abertura de fato termina — em dev, o
     // StrictMode monta o efeito 2x (monta → limpa → monta), e gravar aqui
     // faria a 2ª montagem já achar "visto hoje" e pular a abertura.
-    const t1 = setTimeout(() => setSaindo(true), 5200);
-    const t2 = setTimeout(() => {
-      try { localStorage.setItem(CHAVE_VISTO, hoje); } catch { /* sem storage, tudo bem */ }
+    const v = refVideo.current;
+    if (v) {
+      // o erro de carregamento pode ter disparado antes da hidratação (HTML estático)
+      if (v.error || v.networkState === 3) setSemVideo(true);
+      // React não põe `muted` no HTML do build — sem isso o iOS barra o autoplay
+      v.muted = true;
+      v.play().catch(() => setSemVideo(true));
+    }
+    // vídeo sai no onEnded; o teto é pra rede lenta não prender ninguém na abertura
+    const t = setTimeout(() => setSaindo(true), semVideo ? 5200 : 9000);
+    return () => clearTimeout(t);
+  }, [semVideo]);
+
+  useEffect(() => {
+    if (!saindo) return;
+    const t = setTimeout(() => {
+      try { localStorage.setItem(CHAVE_VISTO, new Date().toDateString()); } catch { /* sem storage, tudo bem */ }
       setFim(true);
-    }, 5850);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
+    }, 650);
+    return () => clearTimeout(t);
+  }, [saindo]);
 
   if (fim) return null;
 
@@ -52,6 +70,12 @@ export default function IntroSplash() {
       className="fixed inset-0 z-[100] flex items-center justify-center bg-bg overflow-hidden cursor-pointer"
       style={saindo ? { animation: 'introOut .65s cubic-bezier(.6,0,.8,.4) forwards' } : undefined}
     >
+      {/* a máscara esconde a borda do quadro: o traço surge do escuro e o fundo do vídeo funde com o da página */}
+      {!semVideo ? (
+        <video ref={refVideo} src="intro.mp4" muted playsInline preload="auto"
+          onEnded={() => setSaindo(true)} onError={() => setSemVideo(true)}
+          className="h-[min(56vh,540px)] aspect-video max-w-none shrink-0 [mask-image:radial-gradient(ellipse_closest-side,#000_70%,transparent_100%)]" />
+      ) : (<>
       {/* brilho pulsante de fundo */}
       <div
         className="absolute w-[600px] h-[600px] rounded-full"
@@ -88,6 +112,7 @@ export default function IntroSplash() {
           Sistema de Treinos BP
         </div>
       </div>
+      </>)}
     </div>
   );
 }
