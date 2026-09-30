@@ -183,8 +183,10 @@ function juntarDuplas(lista) {
   const out = [];
   for (const p of lista) {
     if (usados.has(p.presencaId)) continue;
-    const par = p.tipo === 'ps' && p.dupla
-      && lista.find((o) => o !== p && o.tipo === 'ps' && o.nome === p.dupla && !usados.has(o.presencaId));
+    // vale a dupla declarada por qualquer um dos dois (nem sempre os dois marcam)
+    const par = p.tipo === 'ps'
+      && lista.find((o) => o !== p && o.tipo === 'ps' && !usados.has(o.presencaId)
+        && ((p.dupla && o.nome === p.dupla) || o.dupla === p.nome));
     usados.add(p.presencaId);
     if (par) usados.add(par.presencaId);
     out.push(par ? [p, par] : [p]);
@@ -225,6 +227,7 @@ export default function PresencaTab() {
   const [alerta, setAlerta] = useState(null);
   const [feito, setFeito] = useState(null);         // { nome, tipo, dupla } da última confirmação
   const refFeito = useRef(null);
+  const refEditar = useRef(null);
 
   const [presentes, setPresentes] = useState(null);
   const [editando, setEditando] = useState(null);
@@ -266,7 +269,8 @@ export default function PresencaTab() {
     setRegistrando(false);
 
     if (res.ok) {
-      setFeito({ nome: nomeFinal, tipo, dupla: tipo === 'ps' ? dupla.trim() : '' });
+      // res.dupla: quem já tinha escolhido esta pessoa também entra como dupla
+      setFeito({ nome: nomeFinal, tipo, dupla: tipo === 'ps' ? (res.dupla || dupla.trim()) : '' });
       setAlerta(null);
       setNome(''); setDupla(''); setNomeOk(false); setDuplaOk(false);
       setDuplaInvalida(false); setModoNovo(false);
@@ -279,9 +283,18 @@ export default function PresencaTab() {
 
   // Foco vai pro título da confirmação: leitor de tela anuncia, teclado segue dali.
   useEffect(() => { if (feito) refFeito.current?.focus(); }, [feito]);
+  // O painel de edição abre embaixo do formulário: rola até ele e põe o foco no título.
+  useEffect(() => {
+    if (!editando) return;
+    refEditar.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    refEditar.current?.focus({ preventScroll: true });
+  }, [editando]);
+
+  // Dupla atual de alguém, venha de qual lado vier (ele marcou, ou marcaram ele).
+  const duplaAtual = (p) => p.dupla || (presentes || []).find((o) => o !== p && o.dupla === p.nome)?.nome || '';
 
   function abrirEdicao(p) {
-    setEditando(p); setEditDupla(p.dupla || ''); setEditTipo(p.tipo); setEditAlerta(null);
+    setEditando(p); setEditDupla(duplaAtual(p)); setEditTipo(p.tipo); setEditAlerta(null);
   }
   async function salvarEdicao(novaDupla = editDupla) {
     const res = await atualizarPresenca({
@@ -301,17 +314,57 @@ export default function PresencaTab() {
       : p.tipo === 'ps' ? 'bg-bordo/25 text-[#f3a3b3]' : 'bg-surface-2 text-muted';
     return (
       <div key={p.presencaId} className="flex items-center gap-3 min-h-[44px]">
-        <span aria-hidden="true" className={`relative z-10 w-8 h-8 rounded-full grid place-items-center
-          text-[11px] font-semibold shrink-0 ${cor}`}>{iniciais(p.nome)}</span>
+        <span aria-hidden="true" className="w-[56px] shrink-0">
+          <span className={`w-8 h-8 rounded-full grid place-items-center text-[11px] font-semibold ${cor}`}>{iniciais(p.nome)}</span>
+        </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[15px] text-text line-clamp-2 break-words">{p.nome}</span>
-          {sub && <span className="block text-[13px] text-muted truncate">{sub}</span>}
+          <span className="block text-[13px] text-muted truncate tabular-nums">{sub ? `${sub} · ${p.hora}` : p.hora}</span>
         </span>
-        <span className="text-[13px] text-muted tabular-nums shrink-0">{p.hora}</span>
         <LinkButton variant="plain" className="!text-[13px] !px-2.5 !py-2.5 -mr-2.5 shrink-0"
           aria-label={`Editar presença de ${p.nome}`} onClick={() => abrirEdicao(p)}>
           Editar
         </LinkButton>
+      </div>
+    );
+  }
+
+  // "Editar Ana · Caio": à direita no desktop, embaixo das horas no celular (senão os nomes quebram em 4 linhas).
+  function editarDupla(dupla, className) {
+    return (
+      <span className={`items-center text-[13px] text-muted ${className}`}>
+        <span aria-hidden="true">Editar</span>
+        {dupla.map((p, i) => (
+          <span key={p.presencaId} className="flex items-center">
+            {i > 0 && <span aria-hidden="true">·</span>}
+            <LinkButton variant="plain" className="!text-[13px] !px-1.5 !py-2.5"
+              aria-label={`Editar presença de ${p.nome}`} onClick={() => abrirEdicao(p)}>
+              {p.nome.split(' ')[0]}
+            </LinkButton>
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  // Dupla numa linha só (ref.: avatares sobrepostos do Monzo/Noom): as iniciais dos
+  // dois encavaladas, os nomes com "&", as horas embaixo e "Editar Ana · Caio".
+  // fundo opaco (= bordo/25 sobre o painel): o 2º círculo cobre o 1º sem deixar as letras vazarem
+  function linhaDupla([a, b]) {
+    return (
+      <div className="flex items-center gap-3 min-h-[44px]">
+        <span aria-hidden="true" className="w-[56px] flex -space-x-2 shrink-0">
+          {[a, b].map((p) => (
+            <span key={p.presencaId} className="w-8 h-8 rounded-full grid place-items-center text-[11px] font-semibold
+              bg-[#472228] text-[#f3a3b3] ring-2 ring-surface">{iniciais(p.nome)}</span>
+          ))}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] text-text break-words"><span className="sr-only">Dupla: </span>{a.nome} &amp; {b.nome}</span>
+          <span className="block text-[13px] text-muted tabular-nums">{a.hora} e {b.hora}</span>
+          {editarDupla([a, b], 'flex sm:hidden -my-2')}
+        </span>
+        {editarDupla([a, b], 'hidden sm:flex shrink-0 -mr-2.5')}
       </div>
     );
   }
@@ -432,7 +485,7 @@ export default function PresencaTab() {
       {/* ─── Editar presença ─── */}
       {editando && (
         <section aria-labelledby="editar-titulo" className={`${PAINEL} ring-2 ring-inset ring-bordo/60 focus-within:relative focus-within:z-10`}>
-          <h2 id="editar-titulo" className="font-display text-xl font-semibold tracking-tight text-text">Editar presença</h2>
+          <h2 id="editar-titulo" ref={refEditar} tabIndex={-1} className="font-display text-xl font-semibold tracking-tight text-text outline-none">Editar presença</h2>
           <p className="text-[13px] text-muted mt-1">
             Editando: <strong className="text-text font-medium">{editando.nome}</strong>
           </p>
@@ -440,10 +493,21 @@ export default function PresencaTab() {
             {editAlerta && <Alert tipo={editAlerta.tipo} msg={editAlerta.msg} />}
             <SeletorTipo name="editTipo" legenda="O que vai fazer" value={editTipo} onChange={setEditTipo} />
           </div>
+          {editTipo === 'ps' && duplaAtual(editando) && (
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+              <p className="text-[15px] text-text">
+                Dupla hoje: <strong className="font-medium">{duplaAtual(editando)}</strong>
+              </p>
+              <button type="button" onClick={() => salvarEdicao('')}
+                className="py-2 text-[13px] text-text underline decoration-bordo decoration-2 underline-offset-4 hover:decoration-text">
+                Desfazer dupla
+              </button>
+            </div>
+          )}
           {editTipo === 'ps' && (
             <div className="mt-5">
               <label htmlFor="edit-dupla" className={campo}>
-                Dupla <span className="font-normal text-muted">(deixe vazio pra remover)</span>
+                {duplaAtual(editando) ? 'Trocar de dupla' : 'Dupla'} <span className="font-normal text-muted">(opcional)</span>
               </label>
               <Autocomplete
                 id="edit-dupla"
@@ -457,8 +521,8 @@ export default function PresencaTab() {
             </div>
           )}
           <div className="flex gap-2 mt-7">
-            <Button onClick={() => salvarEdicao()}>Salvar</Button>
-            <Button variant="ghost" onClick={() => setEditando(null)}>Cancelar</Button>
+            <Button onClick={() => salvarEdicao()} className="h-[52px] !py-0 !shadow-none normal-case !tracking-normal !text-base">Salvar</Button>
+            <Button variant="ghost" onClick={() => setEditando(null)} className="h-[52px] !py-0 normal-case !tracking-normal !text-base">Cancelar</Button>
           </div>
         </section>
       )}
@@ -495,14 +559,7 @@ export default function PresencaTab() {
               <ul className="mt-1 divide-y divide-white/[0.06]">
                 {juntarDuplas(doGrupo).map((linha) => (
                   <li key={linha[0].presencaId} className="relative py-1.5 animate-fade-up">
-                    {linha.length === 2 ? (
-                      <>
-                        <span className="sr-only">Dupla: </span>
-                        {/* fio ligando os dois avatares da dupla */}
-                        <span aria-hidden="true" className="absolute left-4 top-[28px] bottom-[28px] w-px bg-bordo/50" />
-                        {linha.map((p) => linhaPessoa(p))}
-                      </>
-                    ) : linhaPessoa(linha[0], g === 'ps' ? (linha[0].dupla ? `Dupla: ${linha[0].dupla}` : 'Sem dupla') : null)}
+                    {linha.length === 2 ? linhaDupla(linha) : linhaPessoa(linha[0], g === 'ps' ? (linha[0].dupla ? `Dupla: ${linha[0].dupla}` : 'Sem dupla') : null)}
                   </li>
                 ))}
               </ul>

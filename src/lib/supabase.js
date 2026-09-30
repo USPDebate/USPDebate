@@ -98,18 +98,79 @@ export async function apagarSpeaksData({ data, senha }) {
   return { ok: true };
 }
 
+// ── Duplas do dia ───────────────────────────────────────────
+// A dupla vale dos dois lados: quem escolhe alguém passa a ser dupla dessa pessoa
+// (e ela, dele). Qualquer um dos dois pode desfazer sozinho, editando a própria presença.
+async function presencasDeHoje(tempId) {
+  const { data, error } = await sb.from('presencas')
+    .select('pessoa_id,dupla_pessoa_id,tipo').eq('temporada_id', tempId).eq('data', hojeISO());
+  if (error) throw error;
+  return data || [];
+}
+
+// Com quem `id` está em dupla hoje: quem ele marcou, ou quem marcou ele.
+function parDe(rows, id) {
+  const eu = rows.find((r) => r.pessoa_id === id);
+  if (eu?.dupla_pessoa_id) return eu.dupla_pessoa_id;
+  return rows.find((r) => r.dupla_pessoa_id === id && r.pessoa_id !== id)?.pessoa_id || null;
+}
+
+async function nomeDe(id) {
+  const { data } = await sb.from('pessoas').select('nome').eq('id', id).maybeSingle();
+  return data?.nome || 'outra pessoa';
+}
+
+// Motivo pra `eu` não poder fazer dupla com `d` hoje (ou null se pode).
+async function recusaDupla(rows, eu, d, nomeD) {
+  if (d === eu) return 'Você não pode ser sua própria dupla.';
+  const rowD = rows.find((r) => r.pessoa_id === d);
+  if (rowD && rowD.tipo !== 'ps') {
+    return `${nomeD} está registrado pra ${rowD.tipo === 'juiz' ? 'julgar' : 'assistir'} hoje, não pra debater.`;
+  }
+  const outro = parDe(rows, d);
+  if (outro && outro !== eu) return `${nomeD} já está em dupla com ${await nomeDe(outro)} hoje.`;
+  return null;
+}
+
+// Tira a pessoa de qualquer dupla de hoje, dos dois lados.
+async function desfazerDupla(tempId, id) {
+  const { error } = await sb.from('presencas').update({ dupla_pessoa_id: null })
+    .eq('temporada_id', tempId).eq('data', hojeISO())
+    .or(`pessoa_id.eq.${id},dupla_pessoa_id.eq.${id}`);
+  if (error) throw error;
+}
+
+// Faz a presença de `d` (se já existir hoje) apontar de volta pra `eu`.
+async function espelharDupla(tempId, d, eu) {
+  const { error } = await sb.from('presencas').update({ dupla_pessoa_id: eu })
+    .eq('temporada_id', tempId).eq('data', hojeISO()).eq('pessoa_id', d);
+  if (error) throw error;
+}
+
 export async function registrarPresenca({ nome, dupla, tipo }) {
   try {
     const temp = await temporadaAtiva();
     if (!temp) return { ok: false, erro: 'Nenhuma temporada ativa.' };
     const pessoa = await acharOuCriarPessoa(nome);
     if (!pessoa) return { ok: false, erro: 'Nome inválido.' };
+    const rows = await presencasDeHoje(temp.id);
+    if (rows.some((r) => r.pessoa_id === pessoa.id)) return { ok: false, erro: 'Você já registrou presença hoje!' };
 
     let duplaId = null;
+    let duplaNome = '';
     if (tipo === 'ps' && dupla && dupla.trim().length >= 2) {
       const d = await acharOuCriarPessoa(dupla);
-      duplaId = d ? d.id : null;
+      if (d) {
+        const recusa = await recusaDupla(rows, pessoa.id, d.id, d.nome);
+        if (recusa) return { ok: false, erro: recusa };
+        duplaId = d.id; duplaNome = d.nome;
+      }
+    } else if (tipo === 'ps') {
+      // Não escolheu ninguém, mas alguém já tinha escolhido esta pessoa: entra na dupla.
+      const quem = rows.find((r) => r.dupla_pessoa_id === pessoa.id && r.tipo === 'ps');
+      if (quem) { duplaId = quem.pessoa_id; duplaNome = await nomeDe(quem.pessoa_id); }
     }
+
     const { error } = await sb.from('presencas').insert({
       temporada_id: temp.id, pessoa_id: pessoa.id, data: hojeISO(),
       dupla_pessoa_id: duplaId, tipo,
@@ -118,25 +179,45 @@ export async function registrarPresenca({ nome, dupla, tipo }) {
       if (error.code === '23505') return { ok: false, erro: 'Você já registrou presença hoje!' };
       return { ok: false, erro: 'Erro ao registrar: ' + error.message };
     }
-    return { ok: true, mensagem: 'Presença registrada com sucesso!' };
+    if (duplaId) {
+      await espelharDupla(temp.id, duplaId, pessoa.id);
+      // quem tinha escolhido esta pessoa e não é a dupla escolhida perde o vínculo
+      await sb.from('presencas').update({ dupla_pessoa_id: null })
+        .eq('temporada_id', temp.id).eq('data', hojeISO())
+        .eq('dupla_pessoa_id', pessoa.id).neq('pessoa_id', duplaId);
+    } else if (tipo !== 'ps') {
+      await desfazerDupla(temp.id, pessoa.id); // vai julgar/assistir: não fica como dupla de ninguém
+    }
+    return { ok: true, mensagem: 'Presença registrada com sucesso!', dupla: duplaNome };
   } catch (e) {
     return { ok: false, erro: String(e.message || e) };
   }
 }
 
+// Editar a própria presença. Trocar ou apagar a dupla desfaz a dupla antiga dos
+// dois lados (não precisa da outra pessoa concordar).
 export async function atualizarPresenca({ pessoaId, dupla, tipo }) {
   try {
     const temp = await temporadaAtiva();
+    const rows = await presencasDeHoje(temp.id);
     let duplaId = null;
     if (tipo === 'ps' && dupla && dupla.trim().length >= 2) {
       const d = await acharOuCriarPessoa(dupla);
-      duplaId = d ? d.id : null;
+      if (d) {
+        const recusa = await recusaDupla(rows, pessoaId, d.id, d.nome);
+        if (recusa) return { ok: false, erro: recusa };
+        duplaId = d.id;
+      }
     }
+    const antes = parDe(rows, pessoaId);
+    await desfazerDupla(temp.id, pessoaId);
     const { error } = await sb.from('presencas')
       .update({ dupla_pessoa_id: duplaId, tipo })
       .eq('temporada_id', temp.id).eq('pessoa_id', pessoaId).eq('data', hojeISO());
     if (error) return { ok: false, erro: error.message };
-    return { ok: true, mensagem: 'Presença atualizada.' };
+    if (duplaId) await espelharDupla(temp.id, duplaId, pessoaId);
+    const mensagem = antes && !duplaId ? 'Dupla desfeita.' : 'Presença atualizada.';
+    return { ok: true, mensagem };
   } catch (e) {
     return { ok: false, erro: String(e.message || e) };
   }
